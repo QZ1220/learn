@@ -2,15 +2,15 @@
 ## 一、创建本地项目和remote仓库的连接 ##
 ### 添加之前可以先使用如下命令查看一下目前remote的状况： ###
     $ git remote -v
-    origin  http://wangquanzhou:Zhaobj001@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (fetch)
-    origin  http://wangquanzhou:Zhaobj001@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (push)
+    origin  http://wangquanzhou:Zhaoxxx@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (fetch)
+    origin  http://wangquanzhou:Zhaoxxx@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (push)
 ### 因为我之前已经添加了remote，所以这里会看到origin ###
 
 ### 可以使用如下命令删除remote ###
     $ git remote rm origin
 
 ### 下面开始添加remote，http方式，@符号之前的用户名和密码可以免去每次提交的时候再手动输入用户名和密码 ###
-    $ git remote add origin http://wangquanzhou:Zhaobj001@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
+    $ git remote add origin http://wangquanzhou:Zhaoxxx@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
 
 ### 添加好remote以后，第一次push代码到remote，需要使用如下命令： ###
     $ git push -u origin master
