@@ -392,3 +392,5 @@ add以后，还需要将更改commit到本地仓库
     git clone <remote-addr:repo.git> -b <branch-or-tag-or-commit>
 ### 实际上 clone 回来是包含了该 branch 完整历史的，所以仍然会有比较多的文件传输。###
 ### 你可以使用 github 的打包下载功能，tag 可以通过 release 页面找到连接，也可以直接替换 tag 为任意的branch 名来下载。  ###
+
+![](http://image.beekka.com/blog/2014/bg2014061202.jpg)
