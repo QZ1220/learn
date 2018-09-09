@@ -44,11 +44,25 @@ java.nio.charset.spi
 
 一致性 Hash 算法
 ===========
-https://blog.csdn.net/baidu_30000217/article/details/53671716
 
 一致性Hash算法主要是为了解决分布式环境下,数据均匀映射散列分布的问题.具体可以参考一下[这里][1].
 
 
-  [1]: https://github.com/crossoverJie/JCSprout/blob/master/MD/Consistent-Hash.md
-  
   但是如上的链接对于虚拟节点的讲解不是很清除,我又搜索整理了一下资料.
+  
+  https://blog.csdn.net/baidu_30000217/article/details/53671716
+  
+  发现这个链接对于虚拟节点部分讲解挺不错的.引入虚拟节点以后:
+  ![此处输入图片的描述][2]
+  
+  此时，对象到“虚拟节点”的映射关系为：
+
+objec1->cache C2 ； objec2->cache A1 ； objec3->cache C1 ； objec4->cache A2 ；
+注意,objec2,objec3,objec4并未在上图中标出,但是位置我们应该知道他们的位置.例如objec2应该在cache C2和cache A1之间.
+
+此时,又因为cache C2和cache C1都会映射到cache C上.同理,cache A1和cache A2也会映射到cache A上.因此,平衡性有了很大提高。
+  
+
+
+  [1]: https://github.com/crossoverJie/JCSprout/blob/master/MD/Consistent-Hash.md
+  [2]: https://github.com/WQZ321123/learn/blob/master/image/consistentHash/virtualNode.png?raw=true
