@@ -123,6 +123,130 @@ change master to master_host='192.168.199.219', master_user='slave', master_pass
 start slave;
 ```
 
+mysql主从复制的两种方式
+--------------
+MySQL可以通过两种方式配置主从复制，一种是通过二进制日志（binary log）的方式；另一种是通过GTID（全局事务ID）方式。
+
+上面我们完成的主从复制，其实就是基于bin-log日志的。下面我们再来看一下基于GTID的主从复制方式。
+
+参考链接：https://www.jianshu.com/p/63efedc95822
+
+其实配置和上面的基于日志的类似，首先是使用docker新建两个mysql数据库。
+
+```mysql
+-- 主数据库
+docker run --name mysql-slave-gtid -p 3309:3306 -eMYSQL_ROOT_PASSWORD=root -d mysql:5.7
+
+
+-- 从数据库
+docker run --name mysql-slave-gtid -p 3310:3306 -eMYSQL_ROOT_PASSWORD=root -d mysql:5.7
+```
+
+修改主mysql的my.cnf配置为：
+```linux
+[mysqld]
+server-id=200   
+log-bin=mysql-bin
+
+gtid-mode = on
+enforce-gtid-consistency = on
+```
+重启mysql，然后创建同步数据的用户：
+```mysql
+CREATE USER 'slave'@'%' IDENTIFIED BY '123456';
+GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'slave'@'%';
+```
+
+修改从mysql的配置：
+```linux
+[mysqld]
+server-id=201 
+log-bin=mysql-bin
+
+gtid-mode = on
+enforce-gtid-consistency = on
+```
+
+执行change master命令：
+```mysql 
+change master to MASTER_HOST='192.168.199.219',MASTER_USER='slave',MASTER_PASSWORD='123456',MASTER_PORT=3309,MASTER_AUTO_POSITION=1;
+
+start slave;
+```
+
+基本配置就做完了，可以查看一下slave的状态：
+```mysql
+mysql> show slave status \G;
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.199.219
+                  Master_User: slave
+                  Master_Port: 3309
+                Connect_Retry: 60
+              Master_Log_File: mysql-bin.000002
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: a6fa4106ae2b-relay-bin.000003
+                Relay_Log_Pos: 407
+        Relay_Master_Log_File: mysql-bin.000002
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 2473
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 200
+                  Master_UUID: 97ff54fb-b77e-11e9-8e35-0242ac110005
+             Master_Info_File: /var/lib/mysql/master.info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set: 97ff54fb-b77e-11e9-8e35-0242ac110005:1-5
+            Executed_Gtid_Set: 97ff54fb-b77e-11e9-8e35-0242ac110005:1-5
+                Auto_Position: 1
+         Replicate_Rewrite_DB:
+                 Channel_Name:
+           Master_TLS_Version:
+1 row in set (0.00 sec)
+```
+注意起止的Retrieved_Gtid_Set和Executed_Gtid_Set。
+
+可以再主mysql创建一个db或者插入一些数据进行测试。
+
+
+两种主从模式的对比
+---------
+
+
+
 
 
 
