@@ -254,7 +254,74 @@ Master_SSL_Verify_Server_Cert: No
 
 ![此处输入图片的描述][3]
 
+半同步复制
+-----
+mysql的版同步复制，主要是为了解决主从复制延时比较高的问题（除开网络原因，一般大事务也可能造成主从复制延长较大）。
+
+mysql5.7以后引入了半同步复制的技术，可以有效减少主从复制的延迟。
+
+下面我们演示一下配置半同步复制的过程。我们基于上面gtid复制的集群机器做演示。
+
+ - master端配置
+
+在msater安装半同步复制插件：
+```mysql
+install plugin rpl_semi_sync_master soname 'semisync_master.so';
+```
+设置超时时间，以及打开master半同步复制：
+```mysql
+set global rpl_semi_sync_master_timeout = 500;
+set global rpl_semi_sync_master_enabled=on;
+
+show variables like 'rpl%';
+```
+show一下配置的结果，如下所示：
+```mysql
+mysql> show variables like 'rpl%';
++-------------------------------------------+------------+
+| Variable_name                             | Value      |
++-------------------------------------------+------------+
+| rpl_semi_sync_master_enabled              | ON         |
+| rpl_semi_sync_master_timeout              | 500        |
+| rpl_semi_sync_master_trace_level          | 32         |
+| rpl_semi_sync_master_wait_for_slave_count | 1          |
+| rpl_semi_sync_master_wait_no_slave        | ON         |
+| rpl_semi_sync_master_wait_point           | AFTER_SYNC |
+| rpl_stop_slave_timeout                    | 31536000   |
++-------------------------------------------+------------+
+```
+
+ - slave端配置
+
+```mysql
+install plugin rpl_semi_sync_slave soname 'semisync_slave.so';
+
+set global rpl_semi_sync_slave_enabled=on;
+```
+然后需要重启一下io进程：
+```mysql
+mysql> stop slave io_thread;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql>
+mysql>
+mysql> start slave io_thread;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> show global status like 'rpl%';
++----------------------------+-------+
+| Variable_name              | Value |
++----------------------------+-------+
+| Rpl_semi_sync_slave_status | ON    |
++----------------------------+-------+
+```
+
+我们直观的感受一下半同步复制的过程，首先停掉slave的io进程（stop slave io_thread;），然后主库更新数据，发现主库的更新操作要等到超时时间过后才会执行成功：
+![此处输入图片的描述][4]
+上面的语句花了500ms才执行成功，因为超时时间设置的是500ms。
+
 
   [1]: https://github.com/WQZ321123/learn/blob/master/image/mysql/master-slave.jpg?raw=true
   [2]: https://github.com/WQZ321123/learn/blob/master/image/mysql/20190730235016.jpg?raw=true
   [3]: https://github.com/WQZ321123/learn/blob/master/image/mysql/GTID.png?raw=true
+  [4]: https://github.com/Audi-A7/learn/blob/master/image/mysql/rpl_semi.png?raw=true
