@@ -77,6 +77,10 @@ tar -zxvf kibana-5.2.0-darwin-x86_64.tar.gz
 然后就可以查看日志了：
 ![此处输入图片的描述][6]
 
+Elasticsearch原理学习
+-----------------
+
+
 
   [1]: https://github.com/Audi-A7/learn/blob/master/image/elk/elk.png?raw=true
   [2]: https://github.com/Audi-A7/learn/blob/master/image/elk/elastic.png?raw=true
