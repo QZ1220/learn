@@ -114,6 +114,45 @@ hash
 ----
 hash底层有两种实现：压缩列表和字典（dict）。压缩列表刚刚上面已经介绍过了，下面主要介绍一下字典的数据结构。
 
+ - 字典
+
+字典其实就类似于Java语言中的Map,Python语言中的dict。与Java中的HashMap类似，Redis底层也是使用的散列表作为字典的实现，解决hash冲突使用的是链表法(其实，就是jdk8之前版本里的hashmap)。Redis同样使用了一个数据结构来持有这个散列表：
+
+![此处输入图片的描述][5]
+
+在键增加或减少时，会扩容或缩容，并且进行rehash，根据hash值重新计算索引值。那如果这个字典**太大**了怎么办呢？
+
+为了解决一次性扩容耗时过多的情况，可以将扩容操作穿插在插入操作的过程中，分批完成。当负载因子触达阈值之后，只申请新空间，但并不将老的数据搬移到新散列表中。当有新数据要插入时，将新数据插入新散列表中，并且从老的散列表中拿出一个数据放入到新散列表。每次插入一个数据到散列表，都重复上面的过程。经过多次插入操作之后，老的散列表中的数据就一点一点全部搬移到新散列表中了。这样没有了集中的一次一次性数据搬移，插入操作就都变得很快了。这个过程也被称为**渐进式rehash**。
+
+set
+---
+set里面没有重复的集合。set的实现比较简单。如果是整数类型，就直接使用整数集合intset（应该是类似于数组，然后数组内的元素有序存储的）。使用二分查找来辅助，速度还是挺快的。不过在插入的时候，由于要移动元素，时间复杂度是O(N)。
+
+如果不是整数类型，就使用上面在hash那一节介绍的字典。key为set的值，value为空（这一点和java里的hashset的实现机制是一样的）。
+
+zset
+----
+zset是可排序的set。实现方式有ziplist或skiplist。在同时满足以下两个条件的时候使用ziplist，其他时候使用skiplist，两个条件如下：
+
+ - 有序集合保存的元素数量小于128个
+ - 有序集合保存的所有元素的长度小于64字节
+
+在ziplist内部，是按照score排序递增来存储的。意味着每次插入数据都要移动之后的数据。
+
+ - skiplist
+
+跳表是对链表的一个增强。我们在使用链表的时候，即使元素的有序排列的，但如果要查找一个元素，也需要从头一个个查找下去，时间复杂度是O(N)。而跳表顾名思义，就是跳跃了一些元素，可以抽象多层。
+
+如下图所示，比如我们要查找8，先在最上层L2查找，发现在1和9之间；然后去L1层查找，发现在5和9之间；然后去L0查找，发现在7和9之间，然后找到8。
+
+当元素比较多时，使用跳表可以显著减少查找的次数。
+
+![此处输入图片的描述][6]
+同list类似，Redis内部也不是直接使用的跳表，而是使用了一个自定义的数据结构来持有跳表。下图左边蓝色部分是skiplist，右边是4个zskiplistNode。zskiplistNode内部有很多层L1、L2等，指针指向这一层的下一个结点。BW是回退指针（backward），用于查找的时候回退。然后下面是score和对象本身object。
+![此处输入图片的描述][7]
+
+
+ 
  
  
 
@@ -122,3 +161,6 @@ hash底层有两种实现：压缩列表和字典（dict）。压缩列表刚刚
   [2]: https://github.com/Audi-A7/learn/blob/master/image/redis/sds.jpeg?raw=true
   [3]: https://github.com/Audi-A7/learn/blob/master/image/redis/list.jpeg?raw=true
   [4]: https://github.com/Audi-A7/learn/blob/master/image/redis/ziplist.jpeg?raw=true
+  [5]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_list.jpeg?raw=true
+  [6]: https://github.com/Audi-A7/learn/blob/master/image/redis/jump_table.png?raw=true
+  [7]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_jump_table.png?raw=true
