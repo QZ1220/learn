@@ -83,6 +83,8 @@ transferTo()方法，整个过程如下：
 
 如果网卡支持 gather operations 内核就可以进一步减少数据拷贝。在 Linux kernels 2.4 及更新的版本，socket 描述符已经为适应这个需求做了变化。现在这个方法不仅减少了上下文切换，而且消除了CPU参与的数据拷贝。API接口是一样的，但是实质已经发生了变化：
 
+![此处输入图片的描述][5]
+
 改进后的transferTo()的数据拷贝步骤如下：
 
  1. transferTo() 方法引起 DMA 引擎将文件内容拷贝到内核缓冲区。
@@ -101,3 +103,4 @@ Zero-Copy技术的使用场景有很多，比如Kafka, 又或者是Netty等，�
   [2]: https://github.com/Audi-A7/learn/blob/master/image/netty/%E4%BC%A0%E7%BB%9F%E7%9A%84%E6%95%B0%E6%8D%AE%E6%8B%B7%E8%B4%9D%E6%96%B9%E6%B3%95.png?raw=true
   [3]: https://github.com/Audi-A7/learn/blob/master/image/netty/%E4%BC%A0%E7%BB%9F%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%87%E6%8D%A22.png?raw=true
   [4]: https://github.com/Audi-A7/learn/blob/master/image/netty/%E9%9B%B6%E6%8B%B7%E8%B4%9D%E4%BC%A0%E8%BE%93%E6%96%B9%E6%B3%95.png?raw=true
+  [5]: https://github.com/Audi-A7/learn/blob/master/image/netty/zeroCopy.png?raw=true
