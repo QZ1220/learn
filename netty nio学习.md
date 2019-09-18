@@ -93,6 +93,17 @@ transferTo()方法，整个过程如下：
  2. 没有数据从内核缓冲区拷贝到socket缓冲区，只有携带位置和长度信息的描述符被追加到socket缓冲区上， DMA引擎直接将内核缓冲区的数据传递到协议引擎，全程无需CPU拷贝数据。
 
 Zero-Copy技术的使用场景有很多，比如Kafka, 又或者是Netty等，可以大大提升程序的性能。
+
+线程模型
+----
+
+参考链接：
+
+ 1. https://www.infoq.cn/article/netty-threading-model
+ 2. https://www.jianshu.com/p/38b56531565d
+
+![此处输入图片的描述][7]
+ 
  
 
  
@@ -107,3 +118,4 @@ Zero-Copy技术的使用场景有很多，比如Kafka, 又或者是Netty等，�
   [4]: https://github.com/Audi-A7/learn/blob/master/image/netty/%E9%9B%B6%E6%8B%B7%E8%B4%9D%E4%BC%A0%E8%BE%93%E6%96%B9%E6%B3%95.png?raw=true
   [5]: https://github.com/Audi-A7/learn/blob/master/image/netty/transferToContext.png?raw=true
   [6]: https://github.com/Audi-A7/learn/blob/master/image/netty/zeroCopy.png?raw=true
+  [7]: https://raw.githubusercontent.com/Audi-A7/learn/master/image/netty/netty_thread.webp?token=ABXI2UJ5W3TQ2WRR4BYDHDS5QIAU6
