@@ -361,6 +361,8 @@ mysql> show variables like 'tx_isolation';
 
   简单来说，就是同时开启两个事务，分别为事务A和事务B，事务A新增一条数据id=5，此时，事务B可以对这条数据进行操作。
 
+
+
   
  
   [1]: https://github.com/WQZ321123/learn/blob/master/image/mysql/master-slave.jpg?raw=true
