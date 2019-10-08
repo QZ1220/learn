@@ -533,6 +533,14 @@ mysqld is alive
 sql_kill_blocking_connection: KILL 13
 1 row in set, 3 warnings (0.00 sec)
  ```
+ **慢查询监控**
+ 
+ ```mysql
+ mysql> use information_schema
+Database changed
+mysql> select * from PROCESSLIST where time>30 and command<>'sleep';
+Empty set (0.00 sec)
+ ```
  
  
 
