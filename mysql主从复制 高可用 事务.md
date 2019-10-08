@@ -367,10 +367,128 @@ mysql> show variables like 'tx_isolation';
 mysql性能指标监控及死锁检测
 ----------------
 
+**性能类指标**
+| 名称        | 说明   | 
+| --------   | -----  | 
+| QPS    | 数据库每秒处理的请求数量 |  
+| TPS        |   数据库每秒处理的事务数量   |   
+| 并发数        |    数据库实例当前并行处理的会话数量    | 
+| 连接数        |    连接到数据库会话的数量    | 
+| 缓存命中率        |    innodb的缓存命中率   | 
+
+**功能类指标**
+| 名称        | 说明   | 
+| --------   | -----  | 
+| 可用性   | 数据库能否对外正常提供服务 |  
+| 阻塞       |   当前是否有阻塞的会话   |   
+| 死锁        |    当前shi'wu    | 
+| 慢查询        |    实时慢查询监控    | 
+| 主从延迟        |    数据库主从延迟时间   | 
+| 主从状态        |    数据库主从复制链路是否正常   | 
 
 
+**QPS监控**
+```mysql
+mysql> show global status where variable_name in  ('Queries','uptime');
++---------------+--------+
+| Variable_name | Value  |
++---------------+--------+
+| Queries       | 64     |
+| Uptime        | 949411 |
++---------------+--------+
+2 rows in set (0.01 sec)
+
+mysql> show global status where variable_name in  ('Queries','uptime');
++---------------+--------+
+| Variable_name | Value  |
++---------------+--------+
+| Queries       | 65     |
+| Uptime        | 949423 |
++---------------+--------+
+2 rows in set (0.01 sec)
+
+mysql> select (65-64)/(949423-949411);
++-------------------------+
+| (65-64)/(949423-949411) |
++-------------------------+
+|                  0.0833 |
++-------------------------+
+1 row in set (0.00 sec)
+```
+两次取样值相减，即可得出qps的值。
+
+类似的，可以使用
+```mysql
+mysql> show global status where variable_name in  ('com_update','com_insert','com_delete','uptime');
++---------------+--------+
+| Variable_name | Value  |
++---------------+--------+
+| Com_delete    | 0      |
+| Com_insert    | 5      |
+| Com_update    | 1      |
+| Uptime        | 949668 |
++---------------+--------+
+4 rows in set (0.01 sec)
+```
+语句，执行两次，计算tps。
+
+**数据库并发数**
+```mysql
+mysql> show global status like 'threads_running';
++-----------------+-------+
+| Variable_name   | Value |
++-----------------+-------+
+| Threads_running | 1     |
++-----------------+-------+
+1 row in set (0.00 sec)
+```
+
+**数据库连接数**
+```mysql
+mysql> show global status like 'Threads_connected';
++-------------------+-------+
+| Variable_name     | Value |
++-------------------+-------+
+| Threads_connected | 1     |
++-------------------+-------+
+1 row in set (0.00 sec)
+```
+
+**innodb缓存命中率**
+
+当我们查询数据库的时候，innodb存储引擎，会先将数据读取到缓存中，再次查询时可以提高查询效率。
+
+ - （Innodb_buffer_pool_read_requests-Innodb_buffer_pool_reads）/Innodb_buffer_pool_read_requests*100%
+ - Innodb_buffer_pool_read_requests:从缓存池中读取的次数
+ - Innodb_buffer_pool_reads：从物理磁盘读取的次数
+
+```mysql
+mysql> show global status like 'Innodb_buffer_pool_read%';
++---------------------------------------+-------+
+| Variable_name                         | Value |
++---------------------------------------+-------+
+| Innodb_buffer_pool_read_ahead_rnd     | 0     |
+| Innodb_buffer_pool_read_ahead         | 0     |
+| Innodb_buffer_pool_read_ahead_evicted | 0     |
+| Innodb_buffer_pool_read_requests      | 1605  |
+| Innodb_buffer_pool_reads              | 218   |
++---------------------------------------+-------+
+5 rows in set (0.00 sec)
+
+mysql> select (1605-218)/1605;
++-----------------+
+| (1605-218)/1605 |
++-----------------+
+|          0.8642 |
++-----------------+
+1 row in set (0.00 sec)
+```
+通常，一个高效的mysql数据库，缓存命中率不应该低于95%
 
 
+ 
+
+ 
   
  
   [1]: https://github.com/WQZ321123/learn/blob/master/image/mysql/master-slave.jpg?raw=true
