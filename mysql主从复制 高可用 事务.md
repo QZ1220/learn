@@ -486,12 +486,63 @@ mysql> select (1605-218)/1605;
 通常，一个高效的mysql数据库，缓存命中率不应该低于95%
 
 
+**mysql可用性**
+ 
+ ```mysql
+ {19-10-08 16:27}[ruby-2.3.7]t4f-mbp-17055:~ wangquanzhou% mysqladmin -u root -p ping
+Enter password:
+mysqld is alive
+ ```
+ 
+ **阻塞**
+ 
+ 可以从sys.innodb_lock_waits查询出阻塞的sql语句。
+ ![此处输入图片的描述][5]
+ 
+ 为了模拟阻塞，可以开启两个事物，对同一条数据进行update，第二个事物需要等待第一个事物提交以后，才能提交。
+ 
+ 此时，我们再查询innodb_lock_waits视图，即可得到刚刚阻塞的sql。
+ ```mysql
+ mysql> select * from innodb_lock_waits \G;
+*************************** 1. row ***************************
+                wait_started: 2019-10-08 16:59:50
+                    wait_age: 00:00:13
+               wait_age_secs: 13
+                locked_table: `db_user`.`trans`
+                locked_index: PRIMARY
+                 locked_type: RECORD
+              waiting_trx_id: 4376
+         waiting_trx_started: 2019-10-08 16:59:50
+             waiting_trx_age: 00:00:13
+     waiting_trx_rows_locked: 1
+   waiting_trx_rows_modified: 0
+                 waiting_pid: 15
+               waiting_query: update trans set amount = 2000 where id=1
+             waiting_lock_id: 4376:30:3:2
+           waiting_lock_mode: X
+             blocking_trx_id: 4375
+                blocking_pid: 13
+              blocking_query: NULL
+            blocking_lock_id: 4375:30:3:2
+          blocking_lock_mode: X
+        blocking_trx_started: 2019-10-08 16:58:55
+            blocking_trx_age: 00:01:08
+    blocking_trx_rows_locked: 1
+  blocking_trx_rows_modified: 1
+     sql_kill_blocking_query: KILL QUERY 13
+sql_kill_blocking_connection: KILL 13
+1 row in set, 3 warnings (0.00 sec)
+ ```
+ 
  
 
  
   
  
+
+
   [1]: https://github.com/WQZ321123/learn/blob/master/image/mysql/master-slave.jpg?raw=true
   [2]: https://github.com/WQZ321123/learn/blob/master/image/mysql/20190730235016.jpg?raw=true
   [3]: https://github.com/WQZ321123/learn/blob/master/image/mysql/GTID.png?raw=true
   [4]: https://github.com/Audi-A7/learn/blob/master/image/mysql/rpl_semi.png?raw=true
+  [5]: https://github.com/Audi-A7/learn/blob/master/image/mysql/block.jpeg?raw=true
