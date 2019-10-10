@@ -542,7 +542,39 @@ mysql> select * from PROCESSLIST where time>30 and command<>'sleep';
 Empty set (0.00 sec)
  ```
  
- 
+ **主从延迟**
+ ![此处输入图片的描述][6]
+基本原理，就是生成一张表，主库定时自动往表中插入数据，从库定时查询主库插入的数据是否在从库存在。
+
+**死锁**
+
+使用percona-toolkit 的 pt-deadlock-logger命令。
+
+安装percona-toolkit可以参考链接：http://macappstore.org/percona-toolkit/
+
+**Install the App**
+
+ 1. Press Command+Space and type Terminal and press enter/return key.
+ 2. Run in Terminal app:
+```ruby
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+```
+and press enter/return key. 
+If the screen prompts you to enter a password, please enter your Mac's user password to continue. When you type the password, it won't be displayed on screen, but the system would accept it. So just type your password and press ENTER/RETURN key. Then wait for the command to finish.
+ 3. Run:
+```linux
+brew install percona-toolkit
+```
+
+
+然后使用如下命令：
+```mysql
+{19-10-08 17:26}[ruby-2.3.7]t4f-mbp-17055:~ wangquanzhou% pt-deadlock-logger u=root,p=root,h=127.0.0.1 \
+> --create-dest=table \
+> --dest u=root,p=root,h=127.0.0.1,D=dba,t=dead_lock;
+```
+
+
 
  
   
@@ -554,3 +586,4 @@ Empty set (0.00 sec)
   [3]: https://github.com/WQZ321123/learn/blob/master/image/mysql/GTID.png?raw=true
   [4]: https://github.com/Audi-A7/learn/blob/master/image/mysql/rpl_semi.png?raw=true
   [5]: https://github.com/Audi-A7/learn/blob/master/image/mysql/block.jpeg?raw=true
+  [6]: https://github.com/Audi-A7/learn/blob/master/image/mysql/master-slave.png?raw=true
