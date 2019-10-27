@@ -48,5 +48,5 @@ spring.instance.lease-expiration-duration-in-seconds=90
  ```java
  eureka.client.registry-fetch-interval-seconds=15
  ```
- 
+ 明日继续
  
