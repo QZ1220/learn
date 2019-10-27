@@ -22,6 +22,16 @@
  5. feign源码
  6. hystrix源码
 
-哈哈
+eureka源码分析
+----------
+
+各个服务组件是如何将自己注册到eureka上的呢？
+
+简单来说就是想eureka发送REST请求将自己注册到Eureka Server上的。
+
+那么，这些注册信息又是如何在Eureka上保存的呢？
+
+Eureka内部通过，使用双层的Map结构来保存服务的注册信息。第一层key是服务名，通过spring.application.name配置，第二层key是具体的实例名称（比如，一个服务可以启动多个实例），通过spring.instance.hostname设置。
+
  
  
