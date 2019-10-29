@@ -60,7 +60,13 @@ spring.instance.lease-expiration-duration-in-seconds=90
 
  - 源码分析
 
+一般配置一个eureka服务，我们会做两件事情：
 
+ 1. 在Application主类中配置@EnableDiscoveryClient/@EnableEurekaClient注解
+ 2. 在application.properties中配置defaultZone
+
+注意：@EnableDiscoveryClient/@EnableEurekaClient功能类似，区别在于@EnableDiscoveryClient适用于包含eureka在内的多个注册中心，但是@EnableEurekaClient只适用于eureka。
+ 
  
  
  
