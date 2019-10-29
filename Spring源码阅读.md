@@ -48,5 +48,19 @@ spring.instance.lease-expiration-duration-in-seconds=90
  ```java
  eureka.client.registry-fetch-interval-seconds=15
  ```
- 明日继续
+ 消费者获取到服务清单以后（起止包含服务提供者的元数据信息），可以根据自己的实际需要进行调用，Ribbon默认采用轮训的方式进行调用，从而实现负载均衡。
+ 
+ 
+
+ - 服务下线
+
+正常的服务下线时，会给eureka发送下线的Rest请求，告诉eureka将自己从服务列表剔除。
+
+但是，如果服务异常关闭了，是不会往eureka发送下线请求的，eureka会每60秒检测一次是否有超时时间超过90秒的无心跳服务，如果有就将其从服务列表清除。
+
+ - 源码分析
+
+
+ 
+ 
  
