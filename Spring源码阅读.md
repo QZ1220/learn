@@ -65,7 +65,122 @@ spring.instance.lease-expiration-duration-in-seconds=90
  1. 在Application主类中配置@EnableDiscoveryClient/@EnableEurekaClient注解
  2. 在application.properties中配置defaultZone
 
-注意：@EnableDiscoveryClient/@EnableEurekaClient功能类似，区别在于@EnableDiscoveryClient适用于包含eureka在内的多个注册中心，但是@EnableEurekaClient只适用于eureka。
+注意：@EnableDiscoveryClient/@EnableEurekaClient功能类似，区别在于@EnableDiscoveryClient适用于包含eureka在内的多个注册中心，但是@EnableEurekaClient只适用于eureka。（@EnableEurekaServer注解也可以达到上面两个注解的效果，但是区别嘛。。。嗯  暂时不清楚，官方也没说。）
+
+@EnableDiscoveryClient主要用来开启DiscoveryClient实例，通过梳理，可以得到如下所示的依赖关系图：
+
+真正实现发现服务的是com.netflix.discovery.DiscoveryClient类，该类声明及注释如下：
+```java
+/**
+ * The class that is instrumental for interactions with <tt>Eureka Server</tt>.
+ *
+ * <p>
+ * <tt>Eureka Client</tt> is responsible for a) <em>Registering</em> the
+ * instance with <tt>Eureka Server</tt> b) <em>Renewal</em>of the lease with
+ * <tt>Eureka Server</tt> c) <em>Cancellation</em> of the lease from
+ * <tt>Eureka Server</tt> during shutdown
+ * <p>
+ * d) <em>Querying</em> the list of services/instances registered with
+ * <tt>Eureka Server</tt>
+ * <p>
+ *
+ * <p>
+ * <tt>Eureka Client</tt> needs a configured list of <tt>Eureka Server</tt>
+ * {@link java.net.URL}s to talk to.These {@link java.net.URL}s are typically amazon elastic eips
+ * which do not change. All of the functions defined above fail-over to other
+ * {@link java.net.URL}s specified in the list in the case of failure.
+ * </p>
+ *
+ * @author Karthik Ranganathan, Greg Kim
+ * @author Spencer Gibb
+ *
+ */
+@Singleton
+public class DiscoveryClient implements EurekaClient {
+```
+哈哈哈哈
+
+**服务注册源码分析**
+
+在com.netflix.discovery.DiscoveryClient类中可以找到一个方法initScheduledTasks()，这个方法在DiscoveryClient的都早函数中，会被调用，他主要是负责启动服务列表获取、服务注册的定时任务，源码如下：
+```java
+/**
+     * Initializes all scheduled tasks.
+     */
+    private void initScheduledTasks() {
+        if (clientConfig.shouldFetchRegistry()) {
+            // registry cache refresh timer
+            int registryFetchIntervalSeconds = clientConfig.getRegistryFetchIntervalSeconds();
+            int expBackOffBound = clientConfig.getCacheRefreshExecutorExponentialBackOffBound();
+            scheduler.schedule(
+                    new TimedSupervisorTask(
+                            "cacheRefresh",
+                            scheduler,
+                            cacheRefreshExecutor,
+                            registryFetchIntervalSeconds,
+                            TimeUnit.SECONDS,
+                            expBackOffBound,
+                            new CacheRefreshThread()
+                    ),
+                    registryFetchIntervalSeconds, TimeUnit.SECONDS);
+        }
+
+        if (clientConfig.shouldRegisterWithEureka()) {
+            int renewalIntervalInSecs = instanceInfo.getLeaseInfo().getRenewalIntervalInSecs();
+            int expBackOffBound = clientConfig.getHeartbeatExecutorExponentialBackOffBound();
+            logger.info("Starting heartbeat executor: " + "renew interval is: {}", renewalIntervalInSecs);
+
+            // Heartbeat timer
+            scheduler.schedule(
+                    new TimedSupervisorTask(
+                            "heartbeat",
+                            scheduler,
+                            heartbeatExecutor,
+                            renewalIntervalInSecs,
+                            TimeUnit.SECONDS,
+                            expBackOffBound,
+                            new HeartbeatThread()
+                    ),
+                    renewalIntervalInSecs, TimeUnit.SECONDS);
+
+            // InstanceInfo replicator
+            instanceInfoReplicator = new InstanceInfoReplicator(
+                    this,
+                    instanceInfo,
+                    clientConfig.getInstanceInfoReplicationIntervalSeconds(),
+                    2); // burstSize
+
+            statusChangeListener = new ApplicationInfoManager.StatusChangeListener() {
+                @Override
+                public String getId() {
+                    return "statusChangeListener";
+                }
+
+                @Override
+                public void notify(StatusChangeEvent statusChangeEvent) {
+                    if (InstanceStatus.DOWN == statusChangeEvent.getStatus() ||
+                            InstanceStatus.DOWN == statusChangeEvent.getPreviousStatus()) {
+                        // log at warn level if DOWN was involved
+                        logger.warn("Saw local status change event {}", statusChangeEvent);
+                    } else {
+                        logger.info("Saw local status change event {}", statusChangeEvent);
+                    }
+                    instanceInfoReplicator.onDemandUpdate();
+                }
+            };
+
+            if (clientConfig.shouldOnDemandUpdateStatusChange()) {
+                applicationInfoManager.registerStatusChangeListener(statusChangeListener);
+            }
+
+            instanceInfoReplicator.start(clientConfig.getInitialInstanceInfoReplicationIntervalSeconds());
+        } else {
+            logger.info("Not registering with Eureka server per configuration");
+        }
+    }
+```
+上面的if (clientConfig.shouldFetchRegistry())就是判断是否需要启动服务列表获取的定时任务，if (clientConfig.shouldRegisterWithEureka())就是判断是否需要将服务注册到eureka上去。定时任务的执行周期都可以配置文件进行配置，否则取默认值。
+
  
  
  
