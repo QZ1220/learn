@@ -69,6 +69,8 @@ spring.instance.lease-expiration-duration-in-seconds=90
 
 @EnableDiscoveryClient主要用来开启DiscoveryClient实例，通过梳理，可以得到如下所示的依赖关系图：
 
+![此处输入图片的描述][1]
+
 真正实现发现服务的是com.netflix.discovery.DiscoveryClient类，该类声明及注释如下：
 ```java
 /**
@@ -223,3 +225,6 @@ public class DiscoveryClient implements EurekaClient {
  ```
  
  
+
+
+  [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
