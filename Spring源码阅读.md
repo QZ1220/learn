@@ -318,7 +318,185 @@ public class DiscoveryClient implements EurekaClient {
     }
  ```
  
+ 上面讲的都是服务如何向eureka发起注册，那么**eureka是如何处理这些注册请求的**呢？下面我们具体看一下：
  
+ 
+以「**服务注册**」为例：
+
+```java
+    /**
+     * Registers information about a particular instance for an
+     * {@link com.netflix.discovery.shared.Application}.
+     *
+     * @param info
+     *            {@link InstanceInfo} information of the instance.
+     * @param isReplication
+     *            a header parameter containing information whether this is
+     *            replicated from other nodes.
+     */
+    @POST
+    @Consumes({"application/json", "application/xml"})
+    public Response addInstance(InstanceInfo info,
+                                @HeaderParam(PeerEurekaNode.HEADER_REPLICATION) String isReplication) {
+        logger.debug("Registering instance {} (replication={})", info.getId(), isReplication);
+        // validate that the instanceinfo contains all the necessary required fields
+        if (isBlank(info.getId())) {
+            return Response.status(400).entity("Missing instanceId").build();
+        } else if (isBlank(info.getHostName())) {
+            return Response.status(400).entity("Missing hostname").build();
+        } else if (isBlank(info.getIPAddr())) {
+            return Response.status(400).entity("Missing ip address").build();
+        } else if (isBlank(info.getAppName())) {
+            return Response.status(400).entity("Missing appName").build();
+        } else if (!appName.equals(info.getAppName())) {
+            return Response.status(400).entity("Mismatched appName, expecting " + appName + " but was " + info.getAppName()).build();
+        } else if (info.getDataCenterInfo() == null) {
+            return Response.status(400).entity("Missing dataCenterInfo").build();
+        } else if (info.getDataCenterInfo().getName() == null) {
+            return Response.status(400).entity("Missing dataCenterInfo Name").build();
+        }
+
+        // handle cases where clients may be registering with bad DataCenterInfo with missing data
+        DataCenterInfo dataCenterInfo = info.getDataCenterInfo();
+        if (dataCenterInfo instanceof UniqueIdentifier) {
+            String dataCenterInfoId = ((UniqueIdentifier) dataCenterInfo).getId();
+            if (isBlank(dataCenterInfoId)) {
+                boolean experimental = "true".equalsIgnoreCase(serverConfig.getExperimental("registration.validation.dataCenterInfoId"));
+                if (experimental) {
+                    String entity = "DataCenterInfo of type " + dataCenterInfo.getClass() + " must contain a valid id";
+                    return Response.status(400).entity(entity).build();
+                } else if (dataCenterInfo instanceof AmazonInfo) {
+                    AmazonInfo amazonInfo = (AmazonInfo) dataCenterInfo;
+                    String effectiveId = amazonInfo.get(AmazonInfo.MetaDataKey.instanceId);
+                    if (effectiveId == null) {
+                        amazonInfo.getMetadata().put(AmazonInfo.MetaDataKey.instanceId.getName(), info.getId());
+                    }
+                } else {
+                    logger.warn("Registering DataCenterInfo of type {} without an appropriate id", dataCenterInfo.getClass());
+                }
+            }
+        }
+
+        registry.register(info, "true".equals(isReplication));
+        return Response.status(204).build();  // 204 to be backwards compatible
+    }
+```
+
+从代码可以看出，他首先会进行一系列的非空以及合法性校验，然后会调用register函数进行真正的注册。
+
+```java
+	@Override
+	public void register(final InstanceInfo info, final boolean isReplication) {
+		handleRegistration(info, resolveInstanceLeaseDuration(info), isReplication);
+		super.register(info, isReplication);
+	}
+```
+handleRegistration的源码如下：
+```java
+	private void handleRegistration(InstanceInfo info, int leaseDuration,
+			boolean isReplication) {
+		log("register " + info.getAppName() + ", vip " + info.getVIPAddress()
+				+ ", leaseDuration " + leaseDuration + ", isReplication "
+				+ isReplication);
+		publishEvent(new EurekaInstanceRegisteredEvent(this, info, leaseDuration,
+				isReplication));
+	}
+```
+
+注册的大致流程为：先调用publishEvent函数，将该新服务注册的时间传播出去。然后调用com.netflix.eureka.registry.AbstractInstanceRegistry抽象类的register方法进行注册：
+```java
+    /**
+     * Registers a new instance with a given duration.
+     *
+     * @see com.netflix.eureka.lease.LeaseManager#register(java.lang.Object, int, boolean)
+     */
+    public void register(InstanceInfo registrant, int leaseDuration, boolean isReplication) {
+        try {
+            read.lock();
+            Map<String, Lease<InstanceInfo>> gMap = registry.get(registrant.getAppName());
+            REGISTER.increment(isReplication);
+            if (gMap == null) {
+                final ConcurrentHashMap<String, Lease<InstanceInfo>> gNewMap = new ConcurrentHashMap<String, Lease<InstanceInfo>>();
+                gMap = registry.putIfAbsent(registrant.getAppName(), gNewMap);
+                if (gMap == null) {
+                    gMap = gNewMap;
+                }
+            }
+            Lease<InstanceInfo> existingLease = gMap.get(registrant.getId());
+            // Retain the last dirty timestamp without overwriting it, if there is already a lease
+            if (existingLease != null && (existingLease.getHolder() != null)) {
+                Long existingLastDirtyTimestamp = existingLease.getHolder().getLastDirtyTimestamp();
+                Long registrationLastDirtyTimestamp = registrant.getLastDirtyTimestamp();
+                logger.debug("Existing lease found (existing={}, provided={}", existingLastDirtyTimestamp, registrationLastDirtyTimestamp);
+
+                // this is a > instead of a >= because if the timestamps are equal, we still take the remote transmitted
+                // InstanceInfo instead of the server local copy.
+                if (existingLastDirtyTimestamp > registrationLastDirtyTimestamp) {
+                    logger.warn("There is an existing lease and the existing lease's dirty timestamp {} is greater" +
+                            " than the one that is being registered {}", existingLastDirtyTimestamp, registrationLastDirtyTimestamp);
+                    logger.warn("Using the existing instanceInfo instead of the new instanceInfo as the registrant");
+                    registrant = existingLease.getHolder();
+                }
+            } else {
+                // The lease does not exist and hence it is a new registration
+                synchronized (lock) {
+                    if (this.expectedNumberOfClientsSendingRenews > 0) {
+                        // Since the client wants to register it, increase the number of clients sending renews
+                        this.expectedNumberOfClientsSendingRenews = this.expectedNumberOfClientsSendingRenews + 1;
+                        updateRenewsPerMinThreshold();
+                    }
+                }
+                logger.debug("No previous lease information found; it is new registration");
+            }
+            Lease<InstanceInfo> lease = new Lease<InstanceInfo>(registrant, leaseDuration);
+            if (existingLease != null) {
+                lease.setServiceUpTimestamp(existingLease.getServiceUpTimestamp());
+            }
+            gMap.put(registrant.getId(), lease);
+            synchronized (recentRegisteredQueue) {
+                recentRegisteredQueue.add(new Pair<Long, String>(
+                        System.currentTimeMillis(),
+                        registrant.getAppName() + "(" + registrant.getId() + ")"));
+            }
+            // This is where the initial state transfer of overridden status happens
+            if (!InstanceStatus.UNKNOWN.equals(registrant.getOverriddenStatus())) {
+                logger.debug("Found overridden status {} for instance {}. Checking to see if needs to be add to the "
+                                + "overrides", registrant.getOverriddenStatus(), registrant.getId());
+                if (!overriddenInstanceStatusMap.containsKey(registrant.getId())) {
+                    logger.info("Not found overridden id {} and hence adding it", registrant.getId());
+                    overriddenInstanceStatusMap.put(registrant.getId(), registrant.getOverriddenStatus());
+                }
+            }
+            InstanceStatus overriddenStatusFromMap = overriddenInstanceStatusMap.get(registrant.getId());
+            if (overriddenStatusFromMap != null) {
+                logger.info("Storing overridden status {} from map", overriddenStatusFromMap);
+                registrant.setOverriddenStatus(overriddenStatusFromMap);
+            }
+
+            // Set the status based on the overridden status rules
+            InstanceStatus overriddenInstanceStatus = getOverriddenInstanceStatus(registrant, existingLease, isReplication);
+            registrant.setStatusWithoutDirty(overriddenInstanceStatus);
+
+            // If the lease is registered with UP status, set lease service up timestamp
+            if (InstanceStatus.UP.equals(registrant.getStatus())) {
+                lease.serviceUp();
+            }
+            registrant.setActionType(ActionType.ADDED);
+            recentlyChangedQueue.add(new RecentlyChangedItem(lease));
+            registrant.setLastUpdatedTimestamp();
+            invalidateCache(registrant.getAppName(), registrant.getVIPAddress(), registrant.getSecureVipAddress());
+            logger.info("Registered instance {}/{} with status {} (replication={})",
+                    registrant.getAppName(), registrant.getId(), registrant.getStatus(), isReplication);
+        } finally {
+            read.unlock();
+        }
+    }
+```
+
+注册的过程中使用了读锁，可以不影响服务列表的获取，但是会阻塞其他的并发写请求。
+
+
+
 
 
   [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
