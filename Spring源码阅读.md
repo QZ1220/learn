@@ -245,6 +245,80 @@ public class DiscoveryClient implements EurekaClient {
                     registryFetchIntervalSeconds, TimeUnit.SECONDS);
         }
  ```
+ 
+ 通过CacheRefreshThread类的run方法可以知道他其实内部又调用了refreshRegistry方法：
+ ```java
+     /**
+     * The task that fetches the registry information at specified intervals.
+     *
+     */
+    class CacheRefreshThread implements Runnable {
+        public void run() {
+            refreshRegistry();
+        }
+    }
+ ```
+ refreshRegistry方法内部会做一个判断，以决定是否全量拉取服务注册信息还是只拉取更新的服务注册信息。
+ 
+ 上面if判断的结果会决定remoteRegionsModified标志位的值，真正的服务获取是在fetchRegistry方法内完成的。
+ ```java
+ @VisibleForTesting
+    void refreshRegistry() {
+        try {
+            boolean isFetchingRemoteRegionRegistries = isFetchingRemoteRegionRegistries();
+
+            boolean remoteRegionsModified = false;
+            // This makes sure that a dynamic change to remote regions to fetch is honored.
+            String latestRemoteRegions = clientConfig.fetchRegistryForRemoteRegions();
+            if (null != latestRemoteRegions) {
+                String currentRemoteRegions = remoteRegionsToFetch.get();
+                if (!latestRemoteRegions.equals(currentRemoteRegions)) {
+                    // Both remoteRegionsToFetch and AzToRegionMapper.regionsToFetch need to be in sync
+                    synchronized (instanceRegionChecker.getAzToRegionMapper()) {
+                        if (remoteRegionsToFetch.compareAndSet(currentRemoteRegions, latestRemoteRegions)) {
+                            String[] remoteRegions = latestRemoteRegions.split(",");
+                            remoteRegionsRef.set(remoteRegions);
+                            instanceRegionChecker.getAzToRegionMapper().setRegionsToFetch(remoteRegions);
+                            remoteRegionsModified = true;
+                        } else {
+                            logger.info("Remote regions to fetch modified concurrently," +
+                                    " ignoring change from {} to {}", currentRemoteRegions, latestRemoteRegions);
+                        }
+                    }
+                } else {
+                    // Just refresh mapping to reflect any DNS/Property change
+                    instanceRegionChecker.getAzToRegionMapper().refreshMapping();
+                }
+            }
+
+            boolean success = fetchRegistry(remoteRegionsModified);
+            if (success) {
+                registrySize = localRegionApps.get().size();
+                lastSuccessfulRegistryFetchTimestamp = System.currentTimeMillis();
+            }
+
+            if (logger.isDebugEnabled()) {
+                StringBuilder allAppsHashCodes = new StringBuilder();
+                allAppsHashCodes.append("Local region apps hashcode: ");
+                allAppsHashCodes.append(localRegionApps.get().getAppsHashCode());
+                allAppsHashCodes.append(", is fetching remote regions? ");
+                allAppsHashCodes.append(isFetchingRemoteRegionRegistries);
+                for (Map.Entry<String, Applications> entry : remoteRegionVsApps.entrySet()) {
+                    allAppsHashCodes.append(", Remote region: ");
+                    allAppsHashCodes.append(entry.getKey());
+                    allAppsHashCodes.append(" , apps hashcode: ");
+                    allAppsHashCodes.append(entry.getValue().getAppsHashCode());
+                }
+                logger.debug("Completed cache refresh task for discovery. All Apps hash code is {} ",
+                        allAppsHashCodes);
+            }
+        } catch (Throwable e) {
+            logger.error("Cannot fetch registry from server", e);
+        }
+    }
+ ```
+ 
+ 
 
 
   [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
