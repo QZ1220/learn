@@ -12,6 +12,13 @@
  1. https://blog.csdn.net/woshilijiuyi/article/details/82219585
  2. https://blog.csdn.net/qq_35119422/article/details/81559410
 
+版本
+--
+
+ - springboot  2.1.4.RELEASE
+ - springcloud Greenwich.SR1
+
+ 
 目录
 --
 
