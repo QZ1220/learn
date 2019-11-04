@@ -4,7 +4,7 @@
 
 ---
 
-本文主要针对springBoot、springCloud的相关组件的源码阅读及个人理解。
+本文主要针对springBoot、springCloud的相关组件的源码阅读及个人理解，参考了很多《Spring Cloud微服务实战》一书的源码分析。
 
 参考链接
 ----
@@ -710,7 +710,7 @@ public class LoadBalancerAutoConfiguration {
 	private List<RestTemplate> restTemplates = Collections.emptyList();
 ```
  
- 
+ 接下来，我们
  
  
  
