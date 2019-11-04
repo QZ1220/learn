@@ -700,6 +700,17 @@ public class LoadBalancerAutoConfiguration {
 
 改自动化配置类，主要完成了三件事情：
 
+ 1. 创建一个LoadBalancerInterceptor的bean，用于实现拦截客户端发起的请求
+ 2. 创建一个RestTemplateCustomizer用于给RestTemplate加上LoadBalancerInterceptor拦截器
+ 3. 维护了一个被@LoadBalanced注解修饰的RestTemplate对象，通过调用RestTemplateCustomizer来给需要做负载均衡的客户端加LoadBalancerInterceptor的拦截器。
+
+```java
+	@LoadBalanced
+	@Autowired(required = false)
+	private List<RestTemplate> restTemplates = Collections.emptyList();
+```
+ 
+ 
  
  
  
