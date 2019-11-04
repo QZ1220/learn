@@ -508,5 +508,7 @@ Ribbon源码分析
 
 ribbon主要是作为一个服务负载均衡调度，以及服务调用的工具。
 
+ribbon调用工具实现了常用的GET、POST、PUT、DELETE等常用的REST风格的api接口。这个相对简单，下面我们探究一下他是如何实现负载均衡的？？
+
 
   [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
