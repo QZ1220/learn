@@ -694,6 +694,13 @@ public class LoadBalancerAutoConfiguration {
 ```
 
 通过类开头的注解，我们就可以得知，要实现自动装配，需要满足一定的条件：
+
+ - @ConditionalOnClass(RestTemplate.class)   RestTemplate类必须被加载
+ - @ConditionalOnBean(LoadBalancerClient.class)  在spring的bean实例工厂中要有LoadBalancerClient这个bean
+
+改自动化配置类，主要完成了三件事情：
+
+ 
  
  
 
