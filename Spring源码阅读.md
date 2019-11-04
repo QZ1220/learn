@@ -710,7 +710,59 @@ public class LoadBalancerAutoConfiguration {
 	private List<RestTemplate> restTemplates = Collections.emptyList();
 ```
  
- 接下来，我们
+ 接下来，我们看看LoadBalancerInterceptor是如何将普通的RestTemplate变成具有负载均衡功能的。
+ 
+ 下面是LoadBalancerInterceptor的源码：
+ ```java
+ import java.io.IOException;
+import java.net.URI;
+
+import org.springframework.http.HttpRequest;
+import org.springframework.http.client.ClientHttpRequestExecution;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.util.Assert;
+
+/**
+ * @author Spencer Gibb
+ * @author Dave Syer
+ * @author Ryan Baxter
+ * @author William Tran
+ */
+public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
+
+	private LoadBalancerClient loadBalancer;
+	private LoadBalancerRequestFactory requestFactory;
+
+	public LoadBalancerInterceptor(LoadBalancerClient loadBalancer, LoadBalancerRequestFactory requestFactory) {
+		this.loadBalancer = loadBalancer;
+		this.requestFactory = requestFactory;
+	}
+
+	public LoadBalancerInterceptor(LoadBalancerClient loadBalancer) {
+		// for backwards compatibility
+		this(loadBalancer, new LoadBalancerRequestFactory(loadBalancer));
+	}
+
+	@Override
+	public ClientHttpResponse intercept(final HttpRequest request, final byte[] body,
+			final ClientHttpRequestExecution execution) throws IOException {
+		final URI originalUri = request.getURI();
+		String serviceName = originalUri.getHost();
+		Assert.state(serviceName != null, "Request URI does not contain a valid hostname: " + originalUri);
+		return this.loadBalancer.execute(serviceName, requestFactory.createRequest(request, body, execution));
+	}
+}
+ ```
+ 
+ 通过源码可以看到，拦截器中注入了LoadBalancerClient的实现，当客户端发起请求时，会被拦截器的intercept方法拦截。
+ 
+ 
+ 
+
+feign源码分析
+---------
+
  
  
  
