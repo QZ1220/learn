@@ -510,5 +510,62 @@ ribbon主要是作为一个服务负载均衡调度，以及服务调用的工�
 
 ribbon调用工具实现了常用的GET、POST、PUT、DELETE等常用的REST风格的api接口。这个相对简单，下面我们探究一下他是如何实现负载均衡的？？
 
+ - @LoadBalanced注解
 
+一般我们会使用该注解使得应用带有负载均衡的能力，那他底层的原理呢？通过搜索LoadBalancerClient，可以发现他是一个org.springframework.cloud.client.loadbalancer下的接口。他有三个方法，如下所示：
+```java
+	/**
+	 * execute request using a ServiceInstance from the LoadBalancer for the specified
+	 * service
+	 * @param serviceId the service id to look up the LoadBalancer
+	 * @param request allows implementations to execute pre and post actions such as
+	 * incrementing metrics
+	 * @return the result of the LoadBalancerRequest callback on the selected
+	 * ServiceInstance
+	 */
+	<T> T execute(String serviceId, LoadBalancerRequest<T> request) throws IOException;
+
+	/**
+	 * execute request using a ServiceInstance from the LoadBalancer for the specified
+	 * service
+	 * @param serviceId the service id to look up the LoadBalancer
+	 * @param serviceInstance the service to execute the request to
+	 * @param request allows implementations to execute pre and post actions such as
+	 * incrementing metrics
+	 * @return the result of the LoadBalancerRequest callback on the selected
+	 * ServiceInstance
+	 */
+	<T> T execute(String serviceId, ServiceInstance serviceInstance, LoadBalancerRequest<T> request) throws IOException;
+
+	/**
+	 * Create a proper URI with a real host and port for systems to utilize.
+	 * Some systems use a URI with the logical serivce name as the host,
+	 * such as http://myservice/path/to/service.  This will replace the
+	 * service name with the host:port from the ServiceInstance.
+	 * @param instance
+	 * @param original a URI with the host as a logical service name
+	 * @return a reconstructed URI
+	 */
+	URI reconstructURI(ServiceInstance instance, URI original);
+```
+
+他还从ServiceInstanceChooser那里继承过来了一个方法：
+```java
+    /**
+     * Choose a ServiceInstance from the LoadBalancer for the specified service
+     * @param serviceId the service id to look up the LoadBalancer
+     * @return a ServiceInstance that matches the serviceId
+     */
+    ServiceInstance choose(String serviceId);
+```
+
+综合来看：
+
+ - choose：为服务的调用方选择一个合适的服务提供方
+ - execute：执行具体的服务调用
+ - reconstructURI：构建真实的服务调用地址，例如http://myservice/path/to/service，而不是ip:port的形式
+
+
+ 
+ 
   [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
