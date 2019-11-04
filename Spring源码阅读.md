@@ -503,7 +503,10 @@ handleRegistration的源码如下：
 注册的过程中使用了读锁，可以不影响服务列表的获取，但是会阻塞其他的并发写请求。
 
 
+Ribbon源码分析
+----------
 
+ribbon主要是作为一个服务负载均衡调度，以及服务调用的工具。
 
 
   [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
