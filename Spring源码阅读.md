@@ -565,7 +565,138 @@ ribbon调用工具实现了常用的GET、POST、PUT、DELETE等常用的REST风
  - execute：执行具体的服务调用
  - reconstructURI：构建真实的服务调用地址，例如http://myservice/path/to/service，而不是ip:port的形式
 
+通过整理LoadBalancerClient接口的依赖关系，得到如下图所示依赖关系：
+![此处输入图片的描述][2]
 
+从上图可以看出，LoadBalancerAutoConfiguration较为关键，从名字上我们也可以看出他是一个实现负载均衡的自动化配置的类，源码如下：
+```java
+package org.springframework.cloud.client.loadbalancer;
+
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.retry.backoff.BackOffPolicy;
+import org.springframework.retry.support.RetryTemplate;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Auto configuration for Ribbon (client side load balancing).
+ *
+ * @author Spencer Gibb
+ * @author Dave Syer
+ * @author Will Tran
+ * @author Gang Li
+ */
+@Configuration
+@ConditionalOnClass(RestTemplate.class)
+@ConditionalOnBean(LoadBalancerClient.class)
+@EnableConfigurationProperties(LoadBalancerRetryProperties.class)
+public class LoadBalancerAutoConfiguration {
+
+	@LoadBalanced
+	@Autowired(required = false)
+	private List<RestTemplate> restTemplates = Collections.emptyList();
+
+	@Bean
+	public SmartInitializingSingleton loadBalancedRestTemplateInitializerDeprecated(
+			final ObjectProvider<List<RestTemplateCustomizer>> restTemplateCustomizers) {
+		return () -> restTemplateCustomizers.ifAvailable(customizers -> {
+            for (RestTemplate restTemplate : LoadBalancerAutoConfiguration.this.restTemplates) {
+                for (RestTemplateCustomizer customizer : customizers) {
+                    customizer.customize(restTemplate);
+                }
+            }
+        });
+	}
+
+	@Autowired(required = false)
+	private List<LoadBalancerRequestTransformer> transformers = Collections.emptyList();
+
+	@Bean
+	@ConditionalOnMissingBean
+	public LoadBalancerRequestFactory loadBalancerRequestFactory(
+			LoadBalancerClient loadBalancerClient) {
+		return new LoadBalancerRequestFactory(loadBalancerClient, transformers);
+	}
+
+	@Configuration
+	@ConditionalOnMissingClass("org.springframework.retry.support.RetryTemplate")
+	static class LoadBalancerInterceptorConfig {
+		@Bean
+		public LoadBalancerInterceptor ribbonInterceptor(
+				LoadBalancerClient loadBalancerClient,
+				LoadBalancerRequestFactory requestFactory) {
+			return new LoadBalancerInterceptor(loadBalancerClient, requestFactory);
+		}
+
+		@Bean
+		@ConditionalOnMissingBean
+		public RestTemplateCustomizer restTemplateCustomizer(
+				final LoadBalancerInterceptor loadBalancerInterceptor) {
+			return restTemplate -> {
+                List<ClientHttpRequestInterceptor> list = new ArrayList<>(
+                        restTemplate.getInterceptors());
+                list.add(loadBalancerInterceptor);
+                restTemplate.setInterceptors(list);
+            };
+		}
+	}
+
+	@Configuration
+	@ConditionalOnClass(RetryTemplate.class)
+	public static class RetryAutoConfiguration {
+
+		@Bean
+		@ConditionalOnMissingBean
+		public LoadBalancedRetryFactory loadBalancedRetryFactory() {
+			return new LoadBalancedRetryFactory() {};
+		}
+	}
+
+	@Configuration
+	@ConditionalOnClass(RetryTemplate.class)
+	public static class RetryInterceptorAutoConfiguration {
+		@Bean
+		@ConditionalOnMissingBean
+		public RetryLoadBalancerInterceptor ribbonInterceptor(
+				LoadBalancerClient loadBalancerClient, LoadBalancerRetryProperties properties,
+				LoadBalancerRequestFactory requestFactory,
+				LoadBalancedRetryFactory loadBalancedRetryFactory) {
+			return new RetryLoadBalancerInterceptor(loadBalancerClient, properties,
+					requestFactory, loadBalancedRetryFactory);
+		}
+
+		@Bean
+		@ConditionalOnMissingBean
+		public RestTemplateCustomizer restTemplateCustomizer(
+				final RetryLoadBalancerInterceptor loadBalancerInterceptor) {
+			return restTemplate -> {
+                List<ClientHttpRequestInterceptor> list = new ArrayList<>(
+                        restTemplate.getInterceptors());
+                list.add(loadBalancerInterceptor);
+                restTemplate.setInterceptors(list);
+            };
+		}
+	}
+}
+```
+
+通过类开头的注解，我们就可以得知，要实现自动装配，需要满足一定的条件：
  
  
+
+
   [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
+  [2]: https://github.com/Audi-A7/learn/blob/master/image/spring/ribbon.png?raw=true
