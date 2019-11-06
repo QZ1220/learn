@@ -757,6 +757,10 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
  
  通过源码可以看到，拦截器中注入了LoadBalancerClient的实现，当客户端发起请求时，会被拦截器的intercept方法拦截。
  
+ **ribbon负载均衡策略**
+ 
+ 
+ 
  
  
 
