@@ -782,7 +782,114 @@ Hystrix源码分析
 
 命令模式主要是为了实现解耦，简化系统编码设计，但是它的概念却并不那么简单，需要仔细思考（区别于策略模式）。命令模式一般都有命令的发出者、命令的传递者、命令的执行者三个角色。
 
+```java
+package com.audi.demo.cmd;
 
+/**
+ * 抽象命令接口
+ *
+ * @author WangQuanzhou
+ * @date 2019-11-11
+ */
+public interface Command {
+    void execute();
+}
+```
+
+```java
+package com.audi.demo.cmd;
+
+/**
+ * 具体的命令实现(传递者)
+ *
+ * @author WangQuanzhou
+ * @date 2019-11-11
+ */
+public class ConcreteCommand implements Command {
+
+    private Receiver receiver;
+
+    public ConcreteCommand(Receiver receiver) {
+        this.receiver = receiver;
+    }
+
+    @Override
+    public void execute() {
+        System.out.println("ConcreteCommand execute method...");
+        this.receiver.action();
+    }
+}
+```
+
+```java
+package com.audi.demo.cmd;
+
+/**
+ * 命令的接收者
+ *
+ * @author WangQuanzhou
+ * @date 2019-11-11
+ */
+public class Receiver {
+
+    public void action() {
+        System.out.println("Receiver action method...");
+    }
+}
+```
+
+```java
+package com.audi.demo.cmd;
+
+/**
+ * 客户端调用者（命令的发起者）
+ *
+ * @author WangQuanzhou
+ * @date 2019-11-11
+ */
+public class Invoker {
+
+    private Command command;
+
+    public void setCommand(Command command) {
+        this.command = command;
+    }
+
+    public void action() {
+        this.command.execute();
+    }
+
+}
+```
+
+```java
+package com.audi.demo.cmd;
+
+/**
+ * 测试调用
+ *
+ * @author WangQuanzhou
+ * @date 2019-11-11
+ */
+public class Client {
+    public static void main(String[] args) {
+        Receiver receiver = new Receiver();
+        Command command = new ConcreteCommand(receiver);
+        Invoker invoker = new Invoker();
+
+        invoker.setCommand(command);
+        invoker.action();
+    }
+}
+```
+
+执行结果：
+```java
+ConcreteCommand execute method...
+Receiver action method...
+
+Process finished with exit code 0
+```
 
 
 
