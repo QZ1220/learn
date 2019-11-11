@@ -899,7 +899,7 @@ Process finished with exit code 0
 
 按图中的数字编号顺序，一一解释如下：
 
- 1. **【构造Command】**构造一个HystrixCommand（阻塞，通过observe()方法可变为非阻塞）或者HystrixObservableCommand（非阻塞）对象，用来表示对依赖服务的操作请求，同时传递所需参数。
+ 1. **【构造Command】**  构造一个HystrixCommand（阻塞，通过observe()方法可变为非阻塞）或者HystrixObservableCommand（非阻塞）对象，用来表示对依赖服务的操作请求，同时传递所需参数。
  2. **【命令执行】**  HystrixCommand实现了execute()方法和queue()方法
 
 同步方法：
