@@ -891,6 +891,10 @@ Receiver action method...
 Process finished with exit code 0
 ```
 
+命令模式的使用场景如下：
+
+![此处输入图片的描述][5]
+
 
 
 按图中的数字编号顺序，一一解释如下：
@@ -906,3 +910,4 @@ Process finished with exit code 0
   [2]: https://github.com/Audi-A7/learn/blob/master/image/spring/ribbon.png?raw=true
   [3]: https://github.com/Audi-A7/learn/blob/master/image/spring/IRule.png?raw=true
   [4]: https://github.com/Audi-A7/learn/blob/master/image/spring/Hystrix.jpg?raw=true
+  [5]: https://github.com/Audi-A7/learn/blob/master/image/spring/Command.png?raw=true
