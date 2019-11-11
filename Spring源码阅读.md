@@ -899,8 +899,150 @@ Process finished with exit code 0
 
 按图中的数字编号顺序，一一解释如下：
 
- 1. 构造一个HystrixCommand（阻塞）或者HystrixObservableCommand（非阻塞）对象，用来表示对依赖服务的操作请求，同时传递所需参数。
+ 1. **【构造Command】**构造一个HystrixCommand（阻塞，通过observe()方法可变为非阻塞）或者HystrixObservableCommand（非阻塞）对象，用来表示对依赖服务的操作请求，同时传递所需参数。
+ 2. **【命令执行】**  HystrixCommand实现了execute()方法和queue()方法
 
+同步方法：
+ ```java
+    /**
+     * Used for synchronous execution of command.
+     * 
+     * @return R
+     *         Result of {@link #run()} execution or a fallback from {@link #getFallback()} if the command fails for any reason.
+     * @throws HystrixRuntimeException
+     *             if a failure occurs and a fallback cannot be retrieved
+     * @throws HystrixBadRequestException
+     *             if invalid arguments or state were used representing a user failure, not a system failure
+     * @throws IllegalStateException
+     *             if invoked more than once
+     */
+    public R execute() {
+        try {
+            return queue().get();
+        } catch (Exception e) {
+            throw Exceptions.sneakyThrow(decomposeException(e));
+        }
+    }
+```
+
+异步方法：
+
+```java
+    /**
+     * Used for asynchronous execution of command.
+     * <p>
+     * This will queue up the command on the thread pool and return an {@link Future} to get the result once it completes.
+     * <p>
+     * NOTE: If configured to not run in a separate thread, this will have the same effect as {@link #execute()} and will block.
+     * <p>
+     * We don't throw an exception but just flip to synchronous execution so code doesn't need to change in order to switch a command from running on a separate thread to the calling thread.
+     * 
+     * @return {@code Future<R>} Result of {@link #run()} execution or a fallback from {@link #getFallback()} if the command fails for any reason.
+     * @throws HystrixRuntimeException
+     *             if a fallback does not exist
+     *             <p>
+     *             <ul>
+     *             <li>via {@code Future.get()} in {@link ExecutionException#getCause()} if a failure occurs</li>
+     *             <li>or immediately if the command can not be queued (such as short-circuited, thread-pool/semaphore rejected)</li>
+     *             </ul>
+     * @throws HystrixBadRequestException
+     *             via {@code Future.get()} in {@link ExecutionException#getCause()} if invalid arguments or state were used representing a user failure, not a system failure
+     * @throws IllegalStateException
+     *             if invoked more than once
+     */
+    public Future<R> queue() {
+        /*
+         * The Future returned by Observable.toBlocking().toFuture() does not implement the
+         * interruption of the execution thread when the "mayInterrupt" flag of Future.cancel(boolean) is set to true;
+         * thus, to comply with the contract of Future, we must wrap around it.
+         */
+        final Future<R> delegate = toObservable().toBlocking().toFuture();
+    	
+        final Future<R> f = new Future<R>() {
+
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning) {
+                if (delegate.isCancelled()) {
+                    return false;
+                }
+
+                if (HystrixCommand.this.getProperties().executionIsolationThreadInterruptOnFutureCancel().get()) {
+                    /*
+                     * The only valid transition here is false -> true. If there are two futures, say f1 and f2, created by this command
+                     * (which is super-weird, but has never been prohibited), and calls to f1.cancel(true) and to f2.cancel(false) are
+                     * issued by different threads, it's unclear about what value would be used by the time mayInterruptOnCancel is checked.
+                     * The most consistent way to deal with this scenario is to say that if *any* cancellation is invoked with interruption,
+                     * than that interruption request cannot be taken back.
+                     */
+                    interruptOnFutureCancel.compareAndSet(false, mayInterruptIfRunning);
+        		}
+
+                final boolean res = delegate.cancel(interruptOnFutureCancel.get());
+
+                if (!isExecutionComplete() && interruptOnFutureCancel.get()) {
+                    final Thread t = executionThread.get();
+                    if (t != null && !t.equals(Thread.currentThread())) {
+                        t.interrupt();
+                    }
+                }
+
+                return res;
+			}
+
+            @Override
+            public boolean isCancelled() {
+                return delegate.isCancelled();
+			}
+
+            @Override
+            public boolean isDone() {
+                return delegate.isDone();
+			}
+
+            @Override
+            public R get() throws InterruptedException, ExecutionException {
+                return delegate.get();
+            }
+
+            @Override
+            public R get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+                return delegate.get(timeout, unit);
+            }
+        	
+        };
+
+        /* special handling of error states that throw immediately */
+        if (f.isDone()) {
+            try {
+                f.get();
+                return f;
+            } catch (Exception e) {
+                Throwable t = decomposeException(e);
+                if (t instanceof HystrixBadRequestException) {
+                    return f;
+                } else if (t instanceof HystrixRuntimeException) {
+                    HystrixRuntimeException hre = (HystrixRuntimeException) t;
+                    switch (hre.getFailureType()) {
+					case COMMAND_EXCEPTION:
+					case TIMEOUT:
+						// we don't throw these types from queue() only from queue().get() as they are execution errors
+						return f;
+					default:
+						// these are errors we throw from queue() as they as rejection type errors
+						throw hre;
+					}
+                } else {
+                    throw Exceptions.sneakyThrow(t);
+                }
+            }
+        }
+
+        return f;
+    }
+```
+
+
+ 
  
  
  
