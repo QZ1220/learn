@@ -776,7 +776,7 @@ Hystrix源码分析
 
 从网上找了一张图，这张图对于hystrix的断路过程解释的挺清晰的，如下所示（原图地址：https://pbs.twimg.com/media/DRAsk2fW0AAngaX.jpg）：
 
-、、、图片
+![此处输入图片的描述][4]
 
 由于Hystrix内使用了命令模式，在开始讲解之前我们简单认识一下命令模式（https://zhuanlan.zhihu.com/p/56949325）：
 
@@ -905,3 +905,4 @@ Process finished with exit code 0
   [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
   [2]: https://github.com/Audi-A7/learn/blob/master/image/spring/ribbon.png?raw=true
   [3]: https://github.com/Audi-A7/learn/blob/master/image/spring/IRule.png?raw=true
+  [4]: https://github.com/Audi-A7/learn/blob/master/image/spring/Hystrix.jpg?raw=true
