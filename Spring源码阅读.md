@@ -771,10 +771,16 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
  ![此处输入图片的描述][3]
  
 
-feign源码分析
+Hystrix源码分析
 ---------
 
+从网上找了一张图，这张图对于hystrix的断路过程解释的挺清晰的，如下所示（原图地址：https://pbs.twimg.com/media/DRAsk2fW0AAngaX.jpg）：
 
+、、、图片
+
+按图中的数字编号顺序，一一解释如下：
+
+ 1. 构造一个HystrixCommand（阻塞）或者HystrixObservableCommand（非阻塞）对象，用来表示对依赖服务的操作请求，同时传递所需参数。
 
  
  
