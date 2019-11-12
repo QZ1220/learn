@@ -1279,7 +1279,14 @@ Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核�
 6. **【HystrixObservableCommand.construct()或者HystrixCommand.run()】**     HystrixCommand.run()返回单一结果，或者抛出异常；HystrixObservableCommand.construct()返回一个Observable对象用于发射多个返回值，或者提供onError发射错误通知。    如果run或者construct方法执行时间超出了命令设置的超时时间，**当前处理线程**就会抛出一个TimeOutException（如果该命令不在其自身的线程中执行，则会通过单独的计时线程来抛出）。如果命令执行失败或者执行超时，命令都会转而执行fallback。  
 7. **【健康度计算】**   上一步命令执行的结果（无论正常执行或者抛出异常），都会产生一个反馈，从而影响【断路器是否开路】这一开关判断。如果将【断路器】开路，那么也不是一直开路，它有一个恢复期的概念（类似于倒计时），如果恢复期结果结束仍不能达到【断路器】闭合的条件，那么就会再次开路进入下一个恢复期。
 8. **【fallback】**   也就是【服务降级】，当命令不能正常被执行的时候，都会转而执行fallback的逻辑。
-9. 【】
+9. **【返回成功的响应】**   当Hystrix命令执行成功以后，它会将处理结果直接返回或是以Observable对象的形式返回。
+
+![此处输入图片的描述][6]
+
+ - toObservable()：返回最原始的Observable，必须通过订阅它，才会真正触发命令的执行流程；
+ - observe()：在toObservable()产生原始的Observable对象之后立即订阅它，让命令能够马上开始异步执行，并返回一个Observable对象。当调用它的subscribe时，将重新产生结果并通知到订阅者；
+ - 
+
  
  
  
@@ -1290,3 +1297,4 @@ Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核�
   [3]: https://github.com/Audi-A7/learn/blob/master/image/spring/IRule.png?raw=true
   [4]: https://github.com/Audi-A7/learn/blob/master/image/spring/Hystrix.jpg?raw=true
   [5]: https://github.com/Audi-A7/learn/blob/master/image/spring/Command.png?raw=true
+  [6]: https://github.com/Audi-A7/learn/blob/master/image/spring/hystrix-return-flow.png?raw=true
