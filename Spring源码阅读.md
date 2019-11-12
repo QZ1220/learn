@@ -1042,7 +1042,7 @@ Process finished with exit code 0
 ```
 
 
- HystrixObservableCommand实现了observe()和toObservable()方法。源码如下：
+ HystrixObservableCommand实现了observe()和toObservable()方法【https://github.com/Netflix/Hystrix/wiki/How-To-Use#Reactive-Execution】。源码如下：
  ```java
      /**
      * Used for asynchronous execution of command with a callback by subscribing to the {@link Observable}.
@@ -1081,6 +1081,8 @@ Process finished with exit code 0
     }
  ```
  
+ 
+
  ```java
      /**
      * Used for asynchronous execution of command with a callback by subscribing to the {@link Observable}.
@@ -1258,7 +1260,17 @@ Process finished with exit code 0
     }
  ```
  
- 
+ https://github.com/Netflix/Hystrix/wiki/How-To-Use#Reactive-Execution
+
+ - observe() — returns a “hot” Observable that executes the command   
+   immediately, though because the Observable is filtered through a   
+   ReplaySubject you are not in danger of losing any items that it emits
+   before you have a chance to subscribe
+ - toObservable() — returns a “cold” Observable that won’t execute the
+   command and begin emitting its results until you subscribe to the
+   Observable
+
+Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核心对象就是Observable（事件源or被观察者）和Subscriber（观察者or订阅者）。
  
  
  
