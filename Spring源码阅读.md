@@ -1285,8 +1285,17 @@ Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核�
 
  - toObservable()：返回最原始的Observable，必须通过订阅它，才会真正触发命令的执行流程；
  - observe()：在toObservable()产生原始的Observable对象之后立即订阅它，让命令能够马上开始异步执行，并返回一个Observable对象。当调用它的subscribe时，将重新产生结果并通知到订阅者；
- - 
+ - queue()：将toObservable()产生的原始Observable对象通过toBlocking()方法转换成BlockingObservable对象，并调用它的toFuture()方法返回异步的Future对象
+ - execute()：在queue()产生异步结果Future对象之后，通过调用get()方法阻塞并等待结果的返回
 
+以上是Command的执行过程，下面看一下断路器的具体内容。
+
+下图出自https://github.com/alexandregama/hystrix-book
+
+![此处输入图片的描述][7]
+
+
+ 
  
  
  
@@ -1298,3 +1307,4 @@ Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核�
   [4]: https://github.com/Audi-A7/learn/blob/master/image/spring/Hystrix.jpg?raw=true
   [5]: https://github.com/Audi-A7/learn/blob/master/image/spring/Command.png?raw=true
   [6]: https://github.com/Audi-A7/learn/blob/master/image/spring/hystrix-return-flow.png?raw=true
+  [7]: https://github.com/Audi-A7/learn/blob/master/image/spring/circuit-breaker-1280.png?raw=true
