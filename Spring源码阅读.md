@@ -1653,7 +1653,13 @@ hystrix使用线程池隔离的技术（舱壁模式），来避免依赖服务�
 
 **Note**: if a dependency is isolated with a semaphore and then becomes latent, the parent threads will remain blocked until the underlying network calls timeout.（也就是说，信号量是没有超时机制的，如果出现调用耗时较长，那么调用它的上层线程会一直block，直到信号量调用的下层线程超时【本质的原因是因为信号量无法设置超时时间，这也是使用信号量的一个缺点】）。
 
+通过设置execution.isolation.strategy=SEMAPHORE时，Hystrix会使用信号量替代线程池来控制依赖服务的并发。
 
+**请求合并**
+
+Hystrix会将一段时间以内的请求（默认10ms）打包一起发送，从而提高并发效率。
+
+![此处输入图片的描述][10]
 
 
  
@@ -1672,3 +1678,4 @@ hystrix使用线程池隔离的技术（舱壁模式），来避免依赖服务�
   [7]: https://github.com/Audi-A7/learn/blob/master/image/spring/circuit-breaker-1280.png?raw=true
   [8]: https://github.com/Audi-A7/learn/blob/master/image/spring/request-example-with-latency-1280.png?raw=true
   [9]: https://github.com/Audi-A7/learn/blob/master/image/spring/isolation-options-1280.png?raw=true
+  [10]: https://github.com/Audi-A7/learn/blob/master/image/spring/collapser-1280.png?raw=true
