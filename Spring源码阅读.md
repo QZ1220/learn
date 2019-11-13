@@ -1633,6 +1633,27 @@ ll
  4. AtomicReference<Status> status：断路器状态引用，默认为CLOSED闭合状态。
  5.AtomicReference<Subscription> activeSubscription：被激活的订阅，默认为空
 
+**Hystrix线程池隔离**
+
+https://github.com/alexandregama/hystrix-book
+
+hystrix使用线程池隔离的技术（舱壁模式），来避免依赖服务之间相互影响。Hystrix uses separate, per-dependency thread pools as a way of constraining any given dependency so latency on the underlying executions will saturate the available threads only in that pool.
+
+![此处输入图片的描述][8]
+
+![此处输入图片的描述][9]
+
+关于使用信号量替代线程池（主要是为了性能考虑），官方有如下解释：
+
+ - You can use semaphores (or counters) to limit the number of
+   concurrent calls to any given dependency, instead of using thread
+   pool/queue sizes
+ - This allows Hystrix to shed load without using thread pools but it
+   does not allow for timing out and walking away
+
+**Note**: if a dependency is isolated with a semaphore and then becomes latent, the parent threads will remain blocked until the underlying network calls timeout.（也就是说，信号量是没有超时机制的，如果出现调用耗时较长，那么调用它的上层线程会一直block，直到信号量调用的下层线程超时【本质的原因是因为信号量无法设置超时时间，这也是使用信号量的一个缺点】）。
+
+
 
 
  
@@ -1649,3 +1670,5 @@ ll
   [5]: https://github.com/Audi-A7/learn/blob/master/image/spring/Command.png?raw=true
   [6]: https://github.com/Audi-A7/learn/blob/master/image/spring/hystrix-return-flow.png?raw=true
   [7]: https://github.com/Audi-A7/learn/blob/master/image/spring/circuit-breaker-1280.png?raw=true
+  [8]: https://github.com/Audi-A7/learn/blob/master/image/spring/request-example-with-latency-1280.png?raw=true
+  [9]: https://github.com/Audi-A7/learn/blob/master/image/spring/isolation-options-1280.png?raw=true
