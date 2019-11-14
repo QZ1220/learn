@@ -566,12 +566,81 @@ If the screen prompts you to enter a password, please enter your Mac's user pass
 brew install percona-toolkit
 ```
 
+在dba库下创建存储死锁信息的表：
+```sql
+use dba;
+CREATE TABLE deadlocks (
+server char(20) NOT NULL,
+ts timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+thread int unsigned NOT NULL,
+txn_id bigint unsigned NOT NULL,
+txn_time smallint unsigned NOT NULL,
+user char(16) NOT NULL,
+hostname char(20) NOT NULL,
+ip char(15) NOT NULL, -- alternatively, ip int unsigned NOT NULL
+db char(64) NOT NULL,
+tbl char(64) NOT NULL,
+idx char(64) NOT NULL,
+lock_type char(16) NOT NULL,
+lock_mode char(1) NOT NULL,
+wait_hold char(1) NOT NULL,
+victim tinyint unsigned NOT NULL,
+query text NOT NULL,
+PRIMARY KEY (server,ts,thread)
+) ENGINE=InnoDB;
+```
 
 然后使用如下命令：
 ```mysql
 {19-10-08 17:26}[ruby-2.3.7]t4f-mbp-17055:~ wangquanzhou% pt-deadlock-logger u=root,p=root,h=127.0.0.1 \
 > --create-dest=table \
-> --dest u=root,p=root,h=127.0.0.1,D=dba,t=dead_lock;
+> --dest u=root,p=root,h=127.0.0.1,D=dba,t=deadlocks
+```
+
+然后人为制造死锁（需要开启两个事物）：
+
+事物A：
+```sql
+mysql> begin;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> update db_user.trans set amount=amount+1 where id=1;
+Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+```
+
+事物B:
+```sql
+mysql> begin;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> update db_user.trans set amount=amount+1 where id=2;
+Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+```
+
+事物A:
+```sql
+mysql> update db_user.trans set amount=amount-1 where id=2;
+Query OK, 1 row affected (10.48 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+```
+
+事物B：
+```sql
+mysql> update db_user.trans set amount=amount-1 where id=1;
+ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction
+mysql>
+```
+
+产生了死锁，查看死锁表：
+```sql
+mysql> select * from deadlocks;
+```
+
+另外一种方式可以通过日志记录数据库的死锁，使用如下命令开启数据库死锁日志的记录：
+```sql
+set persist innodb_print_all_deadlocks=on;
 ```
 
 
