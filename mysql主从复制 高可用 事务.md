@@ -566,6 +566,8 @@ If the screen prompts you to enter a password, please enter your Mac's user pass
 brew install percona-toolkit
 ```
 
+https://www.percona.com/doc/percona-toolkit/LATEST/pt-deadlock-logger.html
+
 在dba库下创建存储死锁信息的表：
 ```sql
 use dba;
@@ -590,7 +592,7 @@ PRIMARY KEY (server,ts,thread)
 ) ENGINE=InnoDB;
 ```
 
-然后使用如下命令：
+然后使用如下命令(如果已经存在死锁表，那么省去下面的--create-dest=table，否则按照pt默认的格式建表)：
 ```mysql
 {19-10-08 17:26}[ruby-2.3.7]t4f-mbp-17055:~ wangquanzhou% pt-deadlock-logger u=root,p=root,h=127.0.0.1 \
 > --create-dest=table \
