@@ -1685,6 +1685,10 @@ ribbon:
 
 注意Hystrix的超时和Ribbon的超时，需要区分开，一般来说，Ribbon的超时都要小于Hystrix的超时时间才有意义，否则Hystrix一超时，直接熔断，那Ribbon的超时时间就没有任何意义了。
 
+feign组件，默认会引入Ribbon和Hystrix组件。默认情况下，feign会将所有feign客户端的方法都封装到Hystrix的命令中进行服务保护。
+
+
+
 spring cloud config源码分析
 -----------------------
 该项目主要为了实现配置的动态配置及更新。
