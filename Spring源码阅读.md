@@ -1671,6 +1671,14 @@ feign调用的时候，如果参数使用@RequestParam或者@RequestHeader注解
 @ApiParam("操作者id") @RequestHeader(name = "user_id") String userId
 ```
 
+feign的客户端负载均衡是通过ribbon来实现的，我们可以直接使用ribbon的配置参数实现客户端的负载均衡。
+```java
+ribbon:
+  ReadTimeout: 60000
+  ConnectTimeout: 60000
+```
+
+
 
 spring cloud config源码分析
 -----------------------
