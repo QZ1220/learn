@@ -1683,7 +1683,7 @@ ribbon:
 [service-name].ribbon.ReadTimeout=xxx
 ```
 
-
+注意Hystrix的超时和Ribbon的超时，需要区分开，一般来说，Ribbon的超时都要小于Hystrix的超时时间才有意义，否则Hystrix一超时，直接熔断，那Ribbon的超时时间就没有任何意义了。
 
 spring cloud config源码分析
 -----------------------
