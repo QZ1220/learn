@@ -1666,6 +1666,11 @@ Hystrix会将一段时间以内的请求（默认10ms）打包一起发送，从
 
 feign源码分析
 -------
+feign调用的时候，如果参数使用@RequestParam或者@RequestHeader注解的话，那么**记得**要写上**value**属性，否则无法正确绑定参数抛出IllegalStateException。
+```java
+@ApiParam("操作者id") @RequestHeader(name = "user_id") String userId
+```
+
 
 spring cloud config源码分析
 -----------------------
