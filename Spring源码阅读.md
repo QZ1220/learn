@@ -1678,6 +1678,11 @@ ribbon:
   ConnectTimeout: 60000
 ```
 
+上面的这种是全局性的配置，如果想针对性对某几个服务的超时时间进行配置的话（比如A服务同时调用了B、C、D服务，如果要特殊针对C、D的超时时间进行设置），那么该怎么配置呢？我们可以使用如下配置方式来进行设置。
+```java
+[service-name].ribbon.ReadTimeout=xxx
+```
+
 
 
 spring cloud config源码分析
