@@ -1687,6 +1687,8 @@ ribbon:
 
 feign组件，默认会引入Ribbon和Hystrix组件。默认情况下，feign会将所有feign客户端的方法都封装到Hystrix的命令中进行服务保护。
 
+**feign的服务降级**
+
 
 
 spring cloud config源码分析
