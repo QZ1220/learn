@@ -762,14 +762,11 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
  ribbon会定时ping（默认10s）服务列表里的服务。
  
  
- 
- **ribbon负载均衡策略**
- 
 **Ribbon的负载均衡策略**
  
  ribbon本身有比较多的策略，基本都集成自IRule接口，如下图所示：
  
- ![此处输入图片的描述][21]
+  ![此处输入图片的描述][3]
  
  IRule作为顶层的接口，其源码如下：
  ```java
@@ -801,7 +798,7 @@ public interface IRule{
  从图上也可以看出，大概有轮询，随机、权重、重试、基于Zone、预判等负载策略。
  
  
- ![此处输入图片的描述][3]
+
  
 
 Hystrix源码分析
