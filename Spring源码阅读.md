@@ -765,7 +765,40 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
  
  **ribbon负载均衡策略**
  
- ribbon实现负载均衡策略主要是通过实现com.netflix.loadbalancer.IRule接口而实现的，负载均衡的策略也很丰富，比如：随机、轮训、重试、权重、基于可用性预测等负载均衡策略，IRule接口的实现如下图所示：
+**Ribbon的负载均衡策略**
+ 
+ ribbon本身有比较多的策略，基本都集成自IRule接口，如下图所示：
+ 
+ ![此处输入图片的描述][21]
+ 
+ IRule作为顶层的接口，其源码如下：
+ ```java
+ /**
+ * Interface that defines a "Rule" for a LoadBalancer. A Rule can be thought of
+ * as a Strategy for loadbalacing. Well known loadbalancing strategies include
+ * Round Robin, Response Time based etc.
+ * 
+ * @author stonse
+ * 
+ */
+public interface IRule{
+    /*
+     * choose one alive server from lb.allServers or
+     * lb.upServers according to key
+     * 
+     * @return choosen Server object. NULL is returned if none
+     *  server is available 
+     */
+
+    public Server choose(Object key);
+    
+    public void setLoadBalancer(ILoadBalancer lb);
+    
+    public ILoadBalancer getLoadBalancer();    
+}
+ ```
+ 
+ 从图上也可以看出，大概有轮询，随机、权重、重试、基于Zone、预判等负载策略。
  
  
  ![此处输入图片的描述][3]
