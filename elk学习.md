@@ -158,8 +158,13 @@ Elasticsearch 支持同一个主机启动多个节点，Ping 的 Response 会包
 
 
 
+es性能优化
+------
 
+ - https://cloud.tencent.com/developer/article/1156231
 
+这篇文章比较详细的介绍了es的调优策略。
+ 
  
 
 
