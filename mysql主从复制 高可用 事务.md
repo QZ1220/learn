@@ -605,10 +605,20 @@ Command的枚举值如下所示：
 
 各个枚举值还可以查看官方文档：https://dev.mysql.com/doc/refman/5.6/en/thread-commands.html
  
- 
+ **此外**，慢查询还可以使用如下命令进行监控：
+```mysql
+show status like '%slow_queries%';
+```
+使用如下命令可以查看与查询相关的数据库配置：
+```mysql
+-- show variables like '%quer%';
+```
+如下图所示，图中同时展示了设置相关参数的sql语句，注意设置慢查询的时间是以秒为单位的：
+
+![此处输入图片的描述][6]
  
  **主从延迟**
- ![此处输入图片的描述][6]
+ ![此处输入图片的描述][7]
 基本原理，就是生成一张表，主库定时自动往表中插入数据，从库定时查询主库插入的数据是否在从库存在。
 
 **死锁**
@@ -722,4 +732,5 @@ set persist innodb_print_all_deadlocks=on;
   [3]: https://github.com/WQZ321123/learn/blob/master/image/mysql/GTID.png?raw=true
   [4]: https://github.com/Audi-A7/learn/blob/master/image/mysql/rpl_semi.png?raw=true
   [5]: https://github.com/Audi-A7/learn/blob/master/image/mysql/block.jpeg?raw=true
-  [6]: https://github.com/Audi-A7/learn/blob/master/image/mysql/master-slave.png?raw=true
+  [6]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
+  [7]: https://github.com/Audi-A7/learn/blob/master/image/mysql/master-slave.png?raw=true
