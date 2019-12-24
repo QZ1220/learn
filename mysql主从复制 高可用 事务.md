@@ -570,6 +570,42 @@ Empty set (0.00 sec)
  - State: 线程的状态，和 Command 对应，下面单独解释。
  - Info: 一般记录的是线程执行的语句。默认只显示前100个字符，也就是你看到的语句可能是截断了的，要看全部信息，需要使用 show full processlist。
 
+Command的枚举值如下所示：
+
+ - Binlog Dump: 主节点正在将二进制日志 ，同步到从节点
+ - Change User: 正在执行一个 change-user 的操作
+ - Close Stmt: 正在关闭一个Prepared Statement 对象
+ - Connect: 一个从节点连上了主节点
+ - Connect Out: 一个从节点正在连主节点
+ - Create DB: 正在执行一个create-database 的操作
+ - Daemon: 服务器内部线程，而不是来自客户端的链接
+ - Debug: 线程正在生成调试信息
+ - Delayed Insert: 该线程是一个延迟插入的处理程序
+ - Drop DB: 正在执行一个 drop-database 的操作
+ - Execute: 正在执行一个 Prepared Statement
+ - Fetch: 正在从Prepared Statement 中获取执行结果
+ - Field List: 正在获取表的列信息
+ - Init DB: 该线程正在选取一个默认的数据库
+ - Kill : 正在执行 kill 语句，杀死指定线程
+ - Long Data: 正在从Prepared Statement 中检索 long data
+ - Ping: 正在处理 server-ping 的请求
+ - Prepare: 该线程正在准备一个 Prepared Statement
+ - ProcessList: 该线程正在生成服务器线程相关信息
+ - Query: 该线程正在执行一个语句
+ - Quit: 该线程正在退出
+ - Refresh：该线程正在刷表，日志或缓存；或者在重置状态变量，或者在复制服务器信息
+ - Register Slave： 正在注册从节点
+ - Reset Stmt: 正在重置 prepared statement
+ - Set Option: 正在设置或重置客户端的 statement-execution 选项
+ - Shutdown: 正在关闭服务器
+ - Sleep: 正在等待客户端向它发送执行语句
+ - Statistics: 该线程正在生成 server-status 信息
+ - Table Dump: 正在发送表的内容到从服务器
+ - Time: Unused
+
+各个枚举值还可以查看官方文档：https://dev.mysql.com/doc/refman/5.6/en/thread-commands.html
+ 
+ 
  
  **主从延迟**
  ![此处输入图片的描述][6]
