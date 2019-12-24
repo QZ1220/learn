@@ -722,7 +722,15 @@ set persist innodb_print_all_deadlocks=on;
 
 
 
+ 数据库设计注意事项
  
+ mysql索引结构
+ 
+ mysql复合索引最左匹配原则及原因
+ 
+ mysql count(id)可能不走主键索引
+ 
+ mysql附索引的查询流程
   
  
 
