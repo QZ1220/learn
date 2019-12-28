@@ -722,7 +722,14 @@ set persist innodb_print_all_deadlocks=on;
 
 
 
- 数据库设计注意事项
+数据库设计注意事项
+---------
+如果需要设计一个关系型数据库，那么一般需要考虑：架构、索引、锁、语法、理论范式等方面。具体一点如下图所示：
+
+![此处输入图片的描述][8]
+
+其中，索引管理、锁设计是重点部分，也是一般面试关注的比较多的地方。
+
  
  mysql索引结构
  
@@ -742,3 +749,4 @@ set persist innodb_print_all_deadlocks=on;
   [5]: https://github.com/Audi-A7/learn/blob/master/image/mysql/block.jpeg?raw=true
   [6]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
   [7]: https://github.com/Audi-A7/learn/blob/master/image/mysql/master-slave.png?raw=true
+  [8]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223224321.png?raw=true
