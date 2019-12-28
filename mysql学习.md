@@ -743,10 +743,13 @@ mysql索引结构
 
 ![此处输入图片的描述][10]
 
+mysql复合索引最左匹配原则及原因
+------------------
+最左匹配原则，可以查看下图，当然这只是针对复合索引而言：
 
+![此处输入图片的描述][11]
+![此处输入图片的描述][12]
 
- 
- mysql复合索引最左匹配原则及原因
  
  mysql count(id)可能不走主键索引
  
@@ -765,3 +768,5 @@ mysql索引结构
   [8]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223224321.png?raw=true
   [9]: https://github.com/Audi-A7/learn/blob/master/%E7%AC%94%E8%AE%B0%E6%95%B4%E7%90%86.md#hash%E7%B4%A2%E5%BC%95%E5%92%8Cbtree%E7%B4%A2%E5%BC%95%E5%92%8C%E4%BD%8D%E5%9B%BE%E7%B4%A2%E5%BC%95
   [10]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223230719.png?raw=true
+  [11]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232559.png?raw=true
+  [12]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232425.png?raw=true
