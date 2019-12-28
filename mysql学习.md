@@ -731,7 +731,20 @@ set persist innodb_print_all_deadlocks=on;
 其中，索引管理、锁设计是重点部分，也是一般面试关注的比较多的地方。
 
  
- mysql索引结构
+ 
+
+mysql索引结构
+---------
+关于索引的结构，之前以及有过[笔记][9]，这里只是补充一点，关于innodb 副索引与主索引的关系。
+
+之前关于主索引的查询步骤还是比较清晰的，但是对于副索引如何查询还是有点疑惑，下面这张图很好的解释了查询的过程，其实副索引也是一个B+-tree的结构，只不过他的叶子节点不再存储数据，而是存储主键索引的值。
+
+查询时，首先根据副索引，找到主键索引的值，然后再在主索引的B+-tree中进行查询。就酱。（PS：之前认为副索引存储的是指向主键索引地址的指针）
+
+![此处输入图片的描述][10]
+
+
+
  
  mysql复合索引最左匹配原则及原因
  
@@ -750,3 +763,5 @@ set persist innodb_print_all_deadlocks=on;
   [6]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
   [7]: https://github.com/Audi-A7/learn/blob/master/image/mysql/master-slave.png?raw=true
   [8]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223224321.png?raw=true
+  [9]: https://github.com/Audi-A7/learn/blob/master/%E7%AC%94%E8%AE%B0%E6%95%B4%E7%90%86.md#hash%E7%B4%A2%E5%BC%95%E5%92%8Cbtree%E7%B4%A2%E5%BC%95%E5%92%8C%E4%BD%8D%E5%9B%BE%E7%B4%A2%E5%BC%95
+  [10]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223230719.png?raw=true
