@@ -759,7 +759,20 @@ count时不走主键索引，很好理解，mysql可能会自己进行优化，�
 ![此处输入图片的描述][13]
 
  
- mysql附索引的查询流程
+ 
+
+mysql慢查询
+--------
+一般定位和处理慢查询可以按照下图的步骤进行处理：
+
+![此处输入图片的描述][14]
+![此处输入图片的描述][15]
+
+那么，如何打开和查询慢查询日志呢？可以曹肇下图的sql进行设置：
+
+![此处输入图片的描述][16]
+
+
   
  
 
@@ -777,3 +790,6 @@ count时不走主键索引，很好理解，mysql可能会自己进行优化，�
   [11]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232559.png?raw=true
   [12]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232425.png?raw=true
   [13]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232157.png?raw=true
+  [14]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231309.png?raw=true
+  [15]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231621.png?raw=true
+  [16]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
