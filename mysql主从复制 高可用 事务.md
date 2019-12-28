@@ -487,12 +487,11 @@ mysql> select (1605-218)/1605;
 
 
 **mysql可用性**
- 
- ```mysql
+```mysql
  {19-10-08 16:27}[ruby-2.3.7]t4f-mbp-17055:~ wangquanzhou% mysqladmin -u root -p ping
 Enter password:
 mysqld is alive
- ```
+```
  
  **阻塞**
  
@@ -502,7 +501,7 @@ mysqld is alive
  为了模拟阻塞，可以开启两个事物，对同一条数据进行update，第二个事物需要等待第一个事物提交以后，才能提交。
  
  此时，我们再查询innodb_lock_waits视图，即可得到刚刚阻塞的sql。
- ```mysql
+```mysql
  mysql> select * from innodb_lock_waits \G;
 *************************** 1. row ***************************
                 wait_started: 2019-10-08 16:59:50
@@ -532,18 +531,94 @@ mysqld is alive
      sql_kill_blocking_query: KILL QUERY 13
 sql_kill_blocking_connection: KILL 13
 1 row in set, 3 warnings (0.00 sec)
- ```
+```
  **慢查询监控**
  
- ```mysql
+```mysql
  mysql> use information_schema
 Database changed
 mysql> select * from PROCESSLIST where time>30 and command<>'sleep';
 Empty set (0.00 sec)
- ```
+```
+ 
+ 这里顺便说一下information_schema.PROCESSLIST表，表结构如下：
+```sql
+ CREATE TEMPORARY TABLE `PROCESSLIST` (
+  `ID` bigint(21) unsigned NOT NULL DEFAULT '0',
+  `USER` varchar(16) NOT NULL DEFAULT '',
+  `HOST` varchar(64) NOT NULL DEFAULT '',
+  `DB` varchar(64) DEFAULT NULL,
+  `COMMAND` varchar(16) NOT NULL DEFAULT '',
+  `TIME` int(7) NOT NULL DEFAULT '0',
+  `STATE` varchar(64) DEFAULT NULL,
+  `INFO` longtext
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+```
+
+ - https://zhuanlan.zhihu.com/p/30743094
+
+各个字段含义如下：
+
+ - Id: 就是这个线程的唯一标识，当我们发现这个线程有问题的时候，可以通过 kill
+   命令，加上这个Id值将这个线程杀掉。前面我们说了show processlist
+   显示的信息时来自information_schema.processlist 表，所以这个Id就是这个表的主键。
+ - User: 就是指启动这个线程的用户。
+ - Host: 记录了发送请求的客户端的IP和端口号。通过这些信息在排查问题的时候，我们可以定位到是哪个客户端的哪个进程发送的请求。
+ - DB: 当前执行的命令是在哪一个数据库上。如果没有指定数据库，则该值为 NULL 。
+ - Command: 是指此刻该线程正在执行的命令。这个很复杂，下面单独解释
+ - Time: 表示该线程处于当前状态的时间。
+ - State: 线程的状态，和 Command 对应，下面单独解释。
+ - Info: 一般记录的是线程执行的语句。默认只显示前100个字符，也就是你看到的语句可能是截断了的，要看全部信息，需要使用 show full processlist。
+
+Command的枚举值如下所示：
+
+ - Binlog Dump: 主节点正在将二进制日志 ，同步到从节点
+ - Change User: 正在执行一个 change-user 的操作
+ - Close Stmt: 正在关闭一个Prepared Statement 对象
+ - Connect: 一个从节点连上了主节点
+ - Connect Out: 一个从节点正在连主节点
+ - Create DB: 正在执行一个create-database 的操作
+ - Daemon: 服务器内部线程，而不是来自客户端的链接
+ - Debug: 线程正在生成调试信息
+ - Delayed Insert: 该线程是一个延迟插入的处理程序
+ - Drop DB: 正在执行一个 drop-database 的操作
+ - Execute: 正在执行一个 Prepared Statement
+ - Fetch: 正在从Prepared Statement 中获取执行结果
+ - Field List: 正在获取表的列信息
+ - Init DB: 该线程正在选取一个默认的数据库
+ - Kill : 正在执行 kill 语句，杀死指定线程
+ - Long Data: 正在从Prepared Statement 中检索 long data
+ - Ping: 正在处理 server-ping 的请求
+ - Prepare: 该线程正在准备一个 Prepared Statement
+ - ProcessList: 该线程正在生成服务器线程相关信息
+ - Query: 该线程正在执行一个语句
+ - Quit: 该线程正在退出
+ - Refresh：该线程正在刷表，日志或缓存；或者在重置状态变量，或者在复制服务器信息
+ - Register Slave： 正在注册从节点
+ - Reset Stmt: 正在重置 prepared statement
+ - Set Option: 正在设置或重置客户端的 statement-execution 选项
+ - Shutdown: 正在关闭服务器
+ - Sleep: 正在等待客户端向它发送执行语句
+ - Statistics: 该线程正在生成 server-status 信息
+ - Table Dump: 正在发送表的内容到从服务器
+ - Time: Unused
+
+各个枚举值还可以查看官方文档：https://dev.mysql.com/doc/refman/5.6/en/thread-commands.html
+ 
+ **此外**，慢查询还可以使用如下命令进行监控：
+```mysql
+show status like '%slow_queries%';
+```
+使用如下命令可以查看与查询相关的数据库配置：
+```mysql
+-- show variables like '%quer%';
+```
+如下图所示，图中同时展示了设置相关参数的sql语句，注意设置慢查询的时间是以秒为单位的：
+
+![此处输入图片的描述][6]
  
  **主从延迟**
- ![此处输入图片的描述][6]
+ ![此处输入图片的描述][7]
 基本原理，就是生成一张表，主库定时自动往表中插入数据，从库定时查询主库插入的数据是否在从库存在。
 
 **死锁**
@@ -647,7 +722,15 @@ set persist innodb_print_all_deadlocks=on;
 
 
 
+ 数据库设计注意事项
  
+ mysql索引结构
+ 
+ mysql复合索引最左匹配原则及原因
+ 
+ mysql count(id)可能不走主键索引
+ 
+ mysql附索引的查询流程
   
  
 
@@ -657,4 +740,5 @@ set persist innodb_print_all_deadlocks=on;
   [3]: https://github.com/WQZ321123/learn/blob/master/image/mysql/GTID.png?raw=true
   [4]: https://github.com/Audi-A7/learn/blob/master/image/mysql/rpl_semi.png?raw=true
   [5]: https://github.com/Audi-A7/learn/blob/master/image/mysql/block.jpeg?raw=true
-  [6]: https://github.com/Audi-A7/learn/blob/master/image/mysql/master-slave.png?raw=true
+  [6]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
+  [7]: https://github.com/Audi-A7/learn/blob/master/image/mysql/master-slave.png?raw=true
