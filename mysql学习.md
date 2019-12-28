@@ -751,7 +751,13 @@ mysql复合索引最左匹配原则及原因
 ![此处输入图片的描述][12]
 
  
- mysql count(id)可能不走主键索引
+ 
+
+mysql count(id)可能不走主键索引
+-----------------------
+count时不走主键索引，很好理解，mysql可能会自己进行优化，因为主键索引是索引+数据的存储模式，而副索引仅仅存储主键索引的值，从读取IO来说，肯定是数据量越少读取的越快。并且，副索引和主索引都是B+-tree的结构，都可以在叶子节点进行横向扫描。
+![此处输入图片的描述][13]
+
  
  mysql附索引的查询流程
   
@@ -770,3 +776,4 @@ mysql复合索引最左匹配原则及原因
   [10]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223230719.png?raw=true
   [11]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232559.png?raw=true
   [12]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232425.png?raw=true
+  [13]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232157.png?raw=true
