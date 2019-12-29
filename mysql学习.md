@@ -774,11 +774,21 @@ mysql慢查询
 
 mysql read repeatable级别如何防止幻读
 -----------------------------
+mysql在RR级别下防止幻读，表象上看是使用了快照技术，即读取的不是最新的数据，是快照（缓存）数据。本质原因是，mysql在RR级别下，操作数据的时候在数据上加了netx-key锁，使得当前操作的事务未提交前，不得进行新的操作，从而避免了幻读的出现。
 ![此处输入图片的描述][17]
 
-关于间歇锁的知识，可以查看之前的[笔记][18]。
+关于间歇锁（需要主键索引、其他索引、不走索引等情况）的知识，可以查看之前的[笔记][18]。
 
+关于快照度和当前度，可以参照下图进行分类：
 
+![此处输入图片的描述][19]
+
+前面提到RR级别下，操作数据会加上next-key锁，那么此时查询操作是允许的吗？答案是肯定的。
+
+mysql每次在操作数据的时候，会将更新前的数据存入undo log中供查询操作进行查询。
+
+![此处输入图片的描述][20]
+![此处输入图片的描述][21]
 
   
  
@@ -802,3 +812,6 @@ mysql read repeatable级别如何防止幻读
   [16]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
   [17]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191224213914.png?raw=true
   [18]: https://github.com/Audi-A7/learn/blob/master/2019%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md#mysql%E9%97%B4%E6%AD%87%E9%94%81
+  [19]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228213155.png?raw=true
+  [20]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228214243.png?raw=true
+  [21]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228214301.png?raw=true
