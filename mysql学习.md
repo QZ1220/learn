@@ -772,6 +772,13 @@ mysql慢查询
 
 ![此处输入图片的描述][16]
 
+mysql read repeatable级别如何防止幻读
+-----------------------------
+![此处输入图片的描述][17]
+
+关于间歇锁的知识，可以查看之前的[笔记][18]。
+
+
 
   
  
@@ -793,3 +800,5 @@ mysql慢查询
   [14]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231309.png?raw=true
   [15]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231621.png?raw=true
   [16]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
+  [17]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191224213914.png?raw=true
+  [18]: https://github.com/Audi-A7/learn/blob/master/2019%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md#mysql%E9%97%B4%E6%AD%87%E9%94%81
