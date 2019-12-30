@@ -201,10 +201,54 @@ redis为何快
 ========
 ![此处输入图片的描述][9]
 
+海量key的查询
+========
 
+redis避免使用keys 使用scan指令
 
  
  
+
+使用redis构建分布式锁
+=============
+
+setnx
+
+设置过期时间
+
+使用redis构建异步队列
+=============
+
+ rpush lpop blpop
+ redis pub-sub
+ 
+
+redis的持久化以及实战
+=============
+rdb aof rdb-aof混合格式（4.0以后的功能）
+redis的save bgsave指令
+
+redis的pipline
+=============
+
+redis的主从同步机制
+==========
+
+全量同步后再进行增量同步
+
+redis sentinel哨兵
+=======
+redis集群主从自动切换
+
+流言协议
+
+redis集群原理
+=========
+一致性hash原理
+
+
+
+
  
  
 
