@@ -4,14 +4,15 @@
 
 ---
 
-参考链接
-----
-https://www.toutiao.com/i6731690432675185165/
-
-https://www.cnblogs.com/hunternet/p/11248192.html
 
 redis数据结构
 =========
+
+参考链接
+----
+
+ - https://www.toutiao.com/i6731690432675185165/
+ - https://www.cnblogs.com/hunternet/p/11248192.html
 
 redisObject
 -----------
@@ -184,7 +185,25 @@ zset是可排序的set。实现方式有ziplist或skiplist。在同时满足以�
 
 ![此处输入图片的描述][8]
 
+redis集群搭建
+=========
 
+redis为何快
+========
+
+主要是由于以下几个方面：
+
+ 1. 完全基于内存，查询速度快
+ 2. 采用单线程处理IO请求，避免高并发时线程上下文的频繁切换
+ 3. 采用多路IO复用模型，提高查询响应速度
+
+多路IO复用模型
+========
+![此处输入图片的描述][9]
+
+
+
+ 
  
  
  
@@ -198,3 +217,4 @@ zset是可排序的set。实现方式有ziplist或skiplist。在同时满足以�
   [6]: https://github.com/Audi-A7/learn/blob/master/image/redis/jump_table.png?raw=true
   [7]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_jump_table.png?raw=true
   [8]: https://github.com/Audi-A7/learn/blob/master/image/redis/zskiplistNode.png?raw=true
+  [9]: https://github.com/Audi-A7/learn/blob/master/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
