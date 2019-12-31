@@ -225,7 +225,17 @@ vim /tmp/redisTest.txt
 ```shell
 cat /tmp/redisTest.txt | 路径/redis-5.0.0/src/redis-cli -h 主机ip -p 端口号 --pipe
 ```
+如果需要安装vim工具：
 
+进入docker容器，执行：
+```shell
+apt-get update
+```
+
+然后执行：
+```shell
+apt-get install -y vim
+```
 
 海量key的查询
 ========
