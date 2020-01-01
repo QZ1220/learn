@@ -205,7 +205,12 @@ redis为何快
 ==========================
 批量生成redis测试数据
 
- 1. Linux Bash下面执行
+windows10环境下进入docker容器，power shell下执行：
+```shell
+ docker exec -it 容器id /bin/bash
+```
+
+ 1. docker容器Linux Bash下面执行
 ```shell
 for((i=1;i<=20000000;i++)); do echo "set k$i v$i" >> /tmp/redisTest.txt ;done;
 ```
@@ -236,14 +241,83 @@ apt-get update
 ```shell
 apt-get install -y vim
 ```
+redis的pipline
+=============
+
+ - https://blog.csdn.net/u011489043/article/details/78769428
+ - https://redis.io/topics/pipelining
+
+看了一些博客和redis的官方文档，感觉pipeline其实简单说就是类似于批量处理。客户端的命令可以批量提交到服务器端，而不是单个单个命令的提交。同时，服务器完成操作也会批量的返回给客户端。
+
+批量操作如何保证顺序呢？很简单，使用队列，而且是FIFO的队列，这样就可以保证命令顺序。但是这也会带来一定的内存开销，因为redis-server需要将操作的结果暂时缓存，一次性返回给客户端。所以，一批次的命令数量需要自己根据实际情况进行设置。
+
+参考链接里使用jedis进行了测试，代码如下：
+```java
+	/*
+	 * 测试普通模式与PipeLine模式的效率： 
+	 * 测试方法：向redis中插入10000组数据
+	 */
+	public static void testPipeLineAndNormal(Jedis jedis)
+			throws InterruptedException {
+		Logger logger = Logger.getLogger("javasoft");
+		long start = System.currentTimeMillis();
+		for (int i = 0; i < 10000; i++) {
+			jedis.set(String.valueOf(i), String.valueOf(i));
+		}
+		long end = System.currentTimeMillis();
+		logger.info("the jedis total time is:" + (end - start));
+
+		Pipeline pipe = jedis.pipelined(); // 先创建一个pipeline的链接对象
+		long start_pipe = System.currentTimeMillis();
+		for (int i = 0; i < 10000; i++) {
+			pipe.set(String.valueOf(i), String.valueOf(i));
+		}
+		pipe.sync(); // 获取所有的response
+		long end_pipe = System.currentTimeMillis();
+		logger.info("the pipe total time is:" + (end_pipe - start_pipe));
+		
+		BlockingQueue<String> logQueue = new LinkedBlockingQueue<String>();
+		long begin = System.currentTimeMillis();
+		for (int i = 0; i < 10000; i++) {
+			logQueue.put("i=" + i);
+		}
+		long stop = System.currentTimeMillis();
+		logger.info("the BlockingQueue total time is:" + (stop - begin));
+	}
+```
+测试结果如下：
+![此处输入图片的描述][10]
+可以看出，再批量处理10K个命令的情况下，使用pipeline的性能是不使用情况的30倍。甚至，使用pipe的性能和本机内存操作的性能匹敌。
 
 海量key的查询
 ========
 
-redis避免使用keys 使用scan指令
+一般不应该使用keys进行大批量数据的过滤查询，因为他会阻塞redis的主进程，从而不能响应其他的查询操作。正确的做法是使用scan指令：
 
- 
- 
+ - http://doc.redisfans.com/key/scan.html
+
+redis的scan使用了游标的概念，其实就是类似于mysql的分页查询，下一次的查询依赖于上一次的查询。
+```shell
+PS C:\Users\audi> docker exec -it eb /bin/bash
+root@eb375872414d:/data#
+root@eb375872414d:/data#
+root@eb375872414d:/data# redis-cli
+127.0.0.1:6379>
+127.0.0.1:6379>
+127.0.0.1:6379>
+127.0.0.1:6379> dbsize
+(integer) 200000
+127.0.0.1:6379>
+127.0.0.1:6379>
+127.0.0.1:6379> scan 0 match k1* count 10
+1) "147456"
+2) 1) "k119234"
+   2) "k188801"
+   3) "k180197"
+   4) "k174636"
+127.0.0.1:6379>
+```
+测试数据有20W，游标从0开始，返回的147456可以作为下一次查询的开始位置。需要指出的是，count 10并不能精确的控制只返回10条数据，redis只是尽量保证返回的数据量和这个差不多。
 
 使用redis构建分布式锁
 =============
@@ -298,3 +372,4 @@ redis集群原理
   [7]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_jump_table.png?raw=true
   [8]: https://github.com/Audi-A7/learn/blob/master/image/redis/zskiplistNode.png?raw=true
   [9]: https://github.com/Audi-A7/learn/blob/master/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
+  [10]: https://github.com/Audi-A7/learn/blob/master/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
