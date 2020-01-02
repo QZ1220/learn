@@ -375,11 +375,34 @@ rpush和lpop是非阻塞的读取，并且读取一次以后消息就不存在�
 blpop貌似会将key也打印出来，还有取到数据所等待的时间。
 
  
+此外，还可以使用redis的pub/sub来构建队列，示例如下：
 
- 
- rpush lpop blpop
- redis pub-sub
- 
+首先开启两个监听客户端：
+```shell
+127.0.0.1:6379> subscribe channel
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "channel"
+3) (integer) 1
+```
+
+```shell
+127.0.0.1:6379> subscribe channel
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "channel"
+3) (integer) 1
+```
+
+然后进行消息发布：
+```shell
+127.0.0.1:6379> publish channel test
+(integer) 2
+```
+
+2表示有两个监听端，此时在消息的监听端应该可以收到消息test。
+
+这种方式任然无法进行消息的持久化，如果需要持久化需要专业的消息队列，如[rabbitmq][11]。 
 
 redis的持久化以及实战
 =============
@@ -421,3 +444,4 @@ redis集群原理
   [8]: https://github.com/Audi-A7/learn/blob/master/image/redis/zskiplistNode.png?raw=true
   [9]: https://github.com/Audi-A7/learn/blob/master/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
   [10]: https://github.com/Audi-A7/learn/blob/master/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
+  [11]: https://github.com/Audi-A7/learn/blob/master/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md
