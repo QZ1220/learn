@@ -406,11 +406,10 @@ Reading messages... (press Ctrl-C to quit)
 
 redis的持久化以及实战
 =============
+
+
 rdb aof rdb-aof混合格式（4.0以后的功能）
 redis的save bgsave指令
-
-redis的pipline
-=============
 
 redis的主从同步机制
 ==========
@@ -421,8 +420,28 @@ redis sentinel哨兵
 =======
 redis集群主从自动切换
 
-流言协议
+gossip流言协议
+==========
 
+ - https://zhuanlan.zhihu.com/p/41228196
+ - https://cristian.regolo.cc/2015/09/05/life-in-a-redis-cluster.html
+
+![此处输入图片的描述][12]
+
+gossip协议按个人理解，其目的是为了在某个特定的集群类传播某个消息，最终使集群都获得该消息，达成最终一致性。在一些区块链项目中也有用到该协议。
+
+ - gossip协议的优点
+
+可扩展性、去中心化、一致性收敛等。
+
+ - gossip协议的缺点
+
+消息冗余、消息延迟。
+
+**消息冗余**怎么理解？个人觉得是这样的，虽然gossip协议规定，子节点在收到父节点的消息以后，不会再将该消息会发给父节点。但是，并没有阻止将消息回发給父-父节点。也就是说，这种跨级的消息发送是被允许的，这样不可避免的某些节点就会收到重复的消息。因此，需要各个节点对消息进行唯一性标识，或者消息本身就携带唯一性标识。
+ 
+ 
+ 
 redis集群原理
 =========
 一致性hash原理
@@ -445,3 +464,4 @@ redis集群原理
   [9]: https://github.com/Audi-A7/learn/blob/master/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
   [10]: https://github.com/Audi-A7/learn/blob/master/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
   [11]: https://github.com/Audi-A7/learn/blob/master/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md
+  [12]: https://github.com/Audi-A7/learn/blob/master/image/redis/gossip.jpg?raw=true
