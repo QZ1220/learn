@@ -447,6 +447,8 @@ gossip协议按个人理解，其目的是为了在某个特定的集群类传�
 redis集群原理
 =========
 
+redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前以及整理过，参见[这里][13]。
+
 
 
 
@@ -466,3 +468,4 @@ redis集群原理
   [10]: https://github.com/Audi-A7/learn/blob/master/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
   [11]: https://github.com/Audi-A7/learn/blob/master/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md
   [12]: https://github.com/Audi-A7/learn/blob/master/image/redis/gossip.jpg?raw=true
+  [13]: https://github.com/Audi-A7/learn/blob/master/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E7%AE%97%E6%B3%95
