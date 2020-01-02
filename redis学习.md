@@ -323,29 +323,102 @@ root@eb375872414d:/data# redis-cli
 =============
 
 使用redis构建分布式锁的原理很简单，虽然我们的应用可能是多实例的，但是一般我们的redis只有一个（集群），我们往redis写入队（k,v），当redis已经存在该数据，那么久无法再次写入，就是这么个道理。
+<<<<<<< HEAD
 
 一般我们会使用setnx指令进行写入，同时设置过期时间。但是这样会有一个问题，那就是在已获得redis锁的线程还没执行完时，可能锁就到期了，另外的线程就可能获得该锁，从而导致并发问题。
 
 稳妥的做法是，以java为例，获得锁时不设置过期时间（或者设置一个相对较大的时间），在finally语句块中进行redis锁的释放。
 
 setnx
+=======
+>>>>>>> 5d35aafe7a5f403ae83a44000c1e518703a4b0e6
 
-设置过期时间
+一般我们会使用setnx指令进行写入，同时设置过期时间。但是这样会有一个问题，那就是在已获得redis锁的线程还没执行完时，可能锁就到期了，另外的线程就可能获得该锁，从而导致并发问题。
 
+稳妥的做法是，以java为例，获得锁时不设置过期时间（或者设置一个相对较大的时间），在finally语句块中进行redis锁的释放。
+
+ 
 使用redis构建异步队列
 =============
 
- rpush lpop blpop
- redis pub-sub
+ - 非阻塞：
+
+rpush和lpop是非阻塞的读取，并且读取一次以后消息就不存在了。
+
+先是入队：
+
+```shell
+127.0.0.1:6379> rpush 123 456
+(integer) 1
+127.0.0.1:6379> 
+```
+
+然后是出队：
+```shell
+127.0.0.1:6379> lpop 123
+"456"
+127.0.0.1:6379> lpop 123
+(nil)
+```
+第二次lpop就没有数据了。
+
+ - 阻塞：
+
+这次是先输入出队的指令，差事时间设置为0表示会一直阻塞：
+```shell
+127.0.0.1:6379> blpop xyz 0
+```
+然后进行入队，需要注意入队使用的还是rpush，没有brpush这个指令：
+```shell
+127.0.0.1:6379> rpush xyz bhcs
+(integer) 1
+```
+此时应该会看到出队的窗口自动输出了，刚刚我们入队的数据：
+```shell
+127.0.0.1:6379> blpop xyz 0
+1) "xyz"
+2) "bhcs"
+(8.88s)
+127.0.0.1:6379> 
+```
+blpop貌似会将key也打印出来，还有取到数据所等待的时间。
+
  
+此外，还可以使用redis的pub/sub来构建队列，示例如下：
+
+首先开启两个监听客户端：
+```shell
+127.0.0.1:6379> subscribe channel
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "channel"
+3) (integer) 1
+```
+
+```shell
+127.0.0.1:6379> subscribe channel
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "channel"
+3) (integer) 1
+```
+
+然后进行消息发布：
+```shell
+127.0.0.1:6379> publish channel test
+(integer) 2
+```
+
+2表示有两个监听端，此时在消息的监听端应该可以收到消息test。
+
+这种方式任然无法进行消息的持久化，如果需要持久化需要专业的消息队列，如[rabbitmq][11]。 
 
 redis的持久化以及实战
 =============
+
+
 rdb aof rdb-aof混合格式（4.0以后的功能）
 redis的save bgsave指令
-
-redis的pipline
-=============
 
 redis的主从同步机制
 ==========
@@ -356,11 +429,30 @@ redis sentinel哨兵
 =======
 redis集群主从自动切换
 
-流言协议
+gossip流言协议
+==========
 
+ - https://zhuanlan.zhihu.com/p/41228196
+ - https://cristian.regolo.cc/2015/09/05/life-in-a-redis-cluster.html
+
+![此处输入图片的描述][12]
+
+gossip协议按个人理解，其目的是为了在某个特定的集群类传播某个消息，最终使集群都获得该消息，达成最终一致性。在一些区块链项目中也有用到该协议。
+
+ - gossip协议的优点
+
+可扩展性、去中心化、一致性收敛等。
+
+ - gossip协议的缺点
+
+消息冗余、消息延迟。
+
+**消息冗余**怎么理解？个人觉得是这样的，虽然gossip协议规定，子节点在收到父节点的消息以后，不会再将该消息会发给父节点。但是，并没有阻止将消息回发給父-父节点。也就是说，这种跨级的消息发送是被允许的，这样不可避免的某些节点就会收到重复的消息。因此，需要各个节点对消息进行唯一性标识，或者消息本身就携带唯一性标识。
+ 
+ 
+ 
 redis集群原理
 =========
-一致性hash原理
 
 
 
@@ -379,3 +471,5 @@ redis集群原理
   [8]: https://github.com/Audi-A7/learn/blob/master/image/redis/zskiplistNode.png?raw=true
   [9]: https://github.com/Audi-A7/learn/blob/master/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
   [10]: https://github.com/Audi-A7/learn/blob/master/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
+  [11]: https://github.com/Audi-A7/learn/blob/master/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md
+  [12]: https://github.com/Audi-A7/learn/blob/master/image/redis/gossip.jpg?raw=true
