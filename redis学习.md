@@ -449,8 +449,11 @@ redis集群原理
 
 redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前以及整理过，参见[这里][13]。
 
+redis集群的搭建需要区别于redis主从服务的搭建。
 
+todo：redis集群搭建  redis主从搭建
 
+ - https://blog.csdn.net/c295477887/article/details/52487621
 
  
  
