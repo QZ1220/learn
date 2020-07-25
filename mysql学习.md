@@ -720,6 +720,22 @@ mysql> select * from deadlocks;
 set persist innodb_print_all_deadlocks=on;
 ```
 
+**此外**，通过如下参数，设置锁获取到等待时间（单位：秒）也可以一定程度上解决死锁：
+```linux
+mysql> set global innodb_lock_wait_timeout=60; 
+Query OK, 0 rows affected
+
+mysql>  show  variables like 'innodb_lock_wait_timeout'; 
++--------------------------+-------+
+| Variable_name            | Value |
++--------------------------+-------+
+| innodb_lock_wait_timeout | 60    |
++--------------------------+-------+
+1 row in set
+
+mysql> 
+```
+
 
 
 数据库设计注意事项
