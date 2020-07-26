@@ -1694,7 +1694,7 @@ Hystrix会将一段时间以内的请求（默认10ms）打包一起发送，从
 
  1. https://blog.csdn.net/qq_44209563/article/details/104697221?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param
 
-Hystrix一般存在open、closed、half-open三个状态，默认情况下hystrix处于open状态（注意Hystrix断路器到语义）。
+Hystrix一般存在open、closed、half-open三个状态，默认情况下hystrix处于closed状态（注意Hystrix断路器到语义）。
 
 **closed->open**:正常情况下熔断器为closed状态，当访问同一个接口次数超过设定阈值并且错误比例超过设置错误阈值时候，就会打开熔断机制，这时候熔断器状态从closed->open。
 
