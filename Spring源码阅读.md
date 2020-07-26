@@ -1,7 +1,6 @@
 ﻿# Spring源码阅读
 
 标签（空格分隔）： spring 源码
-
 ---
 
 本文主要针对springBoot、springCloud的相关组件的源码阅读及个人理解，参考了很多《Spring Cloud微服务实战》一书的源码分析。
@@ -109,7 +108,6 @@ spring.instance.lease-expiration-duration-in-seconds=90
 @Singleton
 public class DiscoveryClient implements EurekaClient {
 ```
-哈哈哈哈
 
 **服务注册源码分析**
 
@@ -1692,6 +1690,17 @@ Hystrix会将一段时间以内的请求（默认10ms）打包一起发送，从
 ![此处输入图片的描述][10]
 
 
+**Hystrix状态转换**
+
+ 1. https://blog.csdn.net/qq_44209563/article/details/104697221?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param
+
+Hystrix一般存在open、closed、half-open三个状态，默认情况下hystrix处于open状态（注意Hystrix断路器到语义）。
+
+**closed->open**:正常情况下熔断器为closed状态，当访问同一个接口次数超过设定阈值并且错误比例超过设置错误阈值时候，就会打开熔断机制，这时候熔断器状态从closed->open。
+
+**open->half-open**:当服务接口对应的熔断器状态为open状态时候，所有服务调用方调用该服务方法时候都是执行本地降级方法，那么什么时候才会恢复到远程调用那？Hystrix提供了一种测试策略，也就是设置了一个时间窗口，从熔断器状态变为open状态开始的一个时间窗口内，调用该服务接口时候都委托服务降级方法进行执行。如果时间超过了时间窗口，则把熔断状态从open->half-open,这时候服务调用方调用服务接口时候，就可以发起远程调用而不再使用本地降级接口，如果发起远程调用还是失败，则重新设置熔断器状态为open状态，从新记录时间窗口开始时间。
+
+**half-open->closed**: 当熔断器状态为half-open,这时候服务调用方调用服务接口时候，就可以发起远程调用而不再使用本地降级接口，如果发起远程调用成功，则重新设置熔断器状态为closed状态。
  
 
 feign源码分析
