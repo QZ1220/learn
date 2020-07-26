@@ -111,7 +111,7 @@ public class DiscoveryClient implements EurekaClient {
 
 **服务注册源码分析**
 
-在com.netflix.discovery.DiscoveryClient类中可以找到一个方法initScheduledTasks()，这个方法在DiscoveryClient的都早函数中，会被调用，他主要是负责启动服务列表获取、服务注册的定时任务，源码如下：
+在com.netflix.discovery.DiscoveryClient类中可以找到一个方法initScheduledTasks()，这个方法在DiscoveryClient的构造函数中，会被调用，他主要是负责启动服务列表获取、服务注册的定时任务，源码如下：
 ```java
 /**
      * Initializes all scheduled tasks.
