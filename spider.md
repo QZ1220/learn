@@ -6,6 +6,9 @@
 
 爬虫相关学习，之前写过一个简单的爬虫，爬取一个网站的图片。但是当时没做笔记，现在记得也不是很清楚，花了点时间重新学习了下。
 
+第一个demo
+=======
+
 ### 首先是安装python
 其实，爬虫不一定要python写，你喜欢的话，啥语言都可以。只是python这块现成封装的包比较多。
 
@@ -26,6 +29,8 @@ pip is already installed if you are using Python 2 >=2.7.9 or Python 3 >=3.4 dow
 否则，就按照教程一步步安装即可。
 
 ### 然后是写一个简单的爬虫
+
+https://www.cnblogs.com/yuanyuan2017/p/7137162.html
 
 ```python
 # coding=utf-8
@@ -62,4 +67,9 @@ ht = getHtml("http://tieba.baidu.com/p/2460150866")
 getimage(ht)
 print("拉取成功...")
 ```
+
+第二个demo，分析心电图
+=============
+
+https://blog.csdn.net/weixin_44728841/article/details/108981911
 
