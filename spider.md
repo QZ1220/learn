@@ -73,7 +73,6 @@ print("拉取成功...")
 
 https://blog.csdn.net/weixin_44728841/article/details/108981911
 
-<<<<<<< HEAD
 
 
 # 项目搭建手册
@@ -425,5 +424,3 @@ CMD ["gunicorn", "app:app", "-c", "./gunicorn.conf.py"]
 然后使用`docker build -t ...`以及`docker push ... `命令将打好的镜像推送到docker仓库。
 
 在docker swarm环境，借助portainer进行service的发布。即可完成容器化部署。
-=======
->>>>>>> bfec11118672516d3c54eaa04d1619656e266e23
