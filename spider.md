@@ -424,3 +424,49 @@ CMD ["gunicorn", "app:app", "-c", "./gunicorn.conf.py"]
 然后使用`docker build -t ...`以及`docker push ... `命令将打好的镜像推送到docker仓库。
 
 在docker swarm环境，借助portainer进行service的发布。即可完成容器化部署。
+
+
+爬取音乐网站
+======
+代码比较简单：
+```python
+# coding:utf-8
+'''
+    代码仅用于学习用途，请勿用于商业或者非法使用，否则后果自负
+    拉取音乐数据
+    python版本3.9.0
+'''
+
+import urllib
+import requests
+import os
+
+
+def download():
+    prefix = "http://f2.htqyy.com/play8/"
+    suffix = "/mp3/10"
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'Referer': 'http://www.htqyy.com/',
+        'accept': '*/*',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-mode': 'cors',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'accept-language': 'zh-CN,zh;q=0.9',
+        'Cookie': '__cfduid=da83b31a1852cbd927c39d8c147b3043c1603008028; blk=1; Hm_lvt_74e11efe27096f6ef1745cd53f168168=1604145821; Hm_lpvt_74e11efe27096f6ef1745cd53f168168=1604147829',
+        'Range': 'bytes=0-'
+    }
+
+    for i in range(11, 1001):
+        url = prefix + str(i) + suffix
+        fileName = str(i) + ".mp3"
+        workPath = os.path.join("music", fileName)
+        data = requests.get(url, headers=headers).content
+        with open(workPath, "wb") as music:
+            music.write(data)
+            print("成功下载歌曲 " + fileName)
+
+
+download()
+```
