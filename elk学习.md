@@ -164,6 +164,141 @@ es性能优化
  - https://cloud.tencent.com/developer/article/1156231
 
 这篇文章比较详细的介绍了es的调优策略。
+
+kibana日志监控组件sentinl安装及使用
+========================
+
+1、下载与kibana版本一致的sentinl安装包，我这里下载的是sentinl-v6.3.0.zip
+，下载地址https://github.com/lmangani/sentinl/releases
+
+2、在kibana的docker容器宿主机新建目录
+```linux
+mkdir -p /data/kibana/package
+mkdir -p /data/kibana/plugins
+# 修改文件夹权限
+chown -R 1000:1000 /data/kibana/package/
+chown -R 1000:1000 /data/kibana/plugins
+```
+
+3、对kibana的启动docker命令增加volume映射，避免每次重启kibana都要重新安装和配置sentinl，我使用的stack方式启动的kibana，启动yml文件如下：
+```json
+version: '3'
+
+services:
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.3.0
+    ports:
+      - "5601:5601"
+    environment:
+      - "ELASTICSEARCH_URL=http://172.20.90.123:9200"
+    volumes:
+      - "/data/kibana/package:/usr/share/kibana/data"
+      - "/data/kibana/plugins:/opt/kibana/plugins"
+    deploy:
+      placement:
+        constraints:
+          - "node.labels.id == manager"
+```
+
+重启下kibana，使路径映射生效
+
+4、进入kibana容器，进入到`/opt/kibana/bin/kibana-plugin`进行插件安装
+```linux
+/opt/kibana/bin/kibana-plugin install file:///usr/share/kibana/data/sentinl-v6.3.0.zip
+```
+
+5、重启kibana
+
+6、为了发送钉钉机器人告警信息，需要在钉钉里面新建一个机器人，如下图所示
+
+![dingRobot](./image/elk/dingRobot.jpg)
+
+7、配置sentinl的watcher，配置好的json示例如下：
+
+![dingRobot](./image/elk/watcher1.jpg)
+```json
+{
+  "actions": {
+    "Webhook_484382e1-fffe-4e39-95fa-a5512ab9f552": {
+      "name": "Webhook",
+      "throttle_period": "1m",
+      "webhook": {
+        "priority": "low",
+        "stateless": false,
+        "method": "POST",
+        "host": "oapi.dingtalk.com",
+        "port": "443",
+        "path": "/robot/send?access_token=bf2a03ef1d2971b163b9f751e26b14f92234acc5e0f9c3141ef905311bd76718",
+        "body": " {\"msgtype\": \"text\", \"text\": { \"content\": \"{{watcher.title}} \nindex：{{payload.hits.hits.0._index}}\nsource：{{payload.hits.hits.0._source.system}}\ndate：{{payload.hits.hits.0._source.date}}\nthread: {{payload.hits.hits.0._source.thread}}\nmessage:{{payload.hits.hits.0._source.message}}\" } }",
+        "params": {
+          "watcher": "{{watcher.title}}",
+          "index": "{{payload.hits.hits.0._index}}",
+          "payload_count": "{{payload.hits.total}}"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "auth": "",
+        "message": "hello",
+        "use_https": true
+      }
+    }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "index": [
+          "microservice-dev*"
+        ],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "match": {
+                    "level.keyword": "ERROR"
+                  }
+                },
+                {
+                  "range": {
+                    "@timestamp": {
+                      "gte": "now-5m",
+                      "lte": "now",
+                      "format": "epoch_millis"
+                    }
+                  }
+                }
+              ],
+              "must_not": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "script": {
+      "script": "payload.hits.total >=1"
+    }
+  },
+  "trigger": {
+    "schedule": {
+      "later": "every 1 hours"
+    }
+  },
+  "disable": false,
+  "report": false,
+  "title": "日志监控告警",
+  "wizard": {},
+  "save_payload": true,
+  "spy": false,
+  "impersonate": false
+}
+```
+
+![dingRobot](./image/elk/watcher02.jpg)
+![dingRobot](./image/elk/DingMSG.jpg)
+
  
  
 
