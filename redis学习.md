@@ -22,6 +22,7 @@
    * [使用redis构建异步队列](#使用redis构建异步队列)
    * [redis的持久化以及实战](#redis的持久化以及实战)
    * [gossip流言协议](#gossip流言协议)
+   * [redis主从搭建](#redis主从搭建)
    * [redis集群原理](#redis集群原理)
    * [redis集群搭建](#redis集群搭建)
    * [redis的主从同步机制](#redis的主从同步机制)
@@ -439,17 +440,30 @@ gossip协议按个人理解，其目的是为了在某个特定的集群类传�
 
 个人觉得是这样的，虽然gossip协议规定，子节点在收到父节点的消息以后，不会再将该消息会发给父节点。但是，并没有阻止将消息回发給父-父节点。也就是说，这种跨级的消息发送是被允许的，这样不可避免的某些节点就会收到重复的消息。因此，需要各个节点对消息进行唯一性标识，或者消息本身就携带唯一性标识。
  
- 
- 
+## redis主从搭建
+
+所谓主从，其实就是数据备份，避免单节点情况下出现的数据丢失。
+
+这里我们以一主两从的模式来搭建，使用docker（compose模式）实现。
+
+docker: 18.09.2
+
+redis tag: 
+
+- https://redis.io/topics/sentinel
+- https://www.jianshu.com/p/f185721eee57
+
 ## redis集群原理
 
 redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前已经整理过，参见[这里](https://github.com/Audi-A7/learn/blob/master/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E7%AE%97%E6%B3%95)。
 
-redis集群的搭建需要区别于redis主从服务的搭建。
+redis集群的搭建需要区别于redis主从服务的搭建，其实这二者的差别就是：集群是每个节点保存一部分数据，而主从就是每个节点都保存了全量（理论上）的数据（为啥是理论上，因为主从复制的期间可能因为网络等原因出现数据延迟等）。
 
-todo：redis集群搭建  redis主从搭建
+- https://blog.csdn.net/c295477887/article/details/52487621
 
- - https://blog.csdn.net/c295477887/article/details/52487621
+todo：redis集群搭建  
+
+ 
 
 ## redis集群搭建
 
