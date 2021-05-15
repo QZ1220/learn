@@ -13,20 +13,20 @@
       * [hash](#hash)
       * [set](#set)
       * [zset](#zset)
-* [redis集群搭建](#redis集群搭建)
    * [redis为何快](#redis为何快)
       * [多路IO复用模型](#多路io复用模型)
-      * [使用shell和pipline构造海量redis数据](#使用shell和pipline构造海量redis数据)
+   * [使用shell和pipline构造海量redis数据](#使用shell和pipline构造海量redis数据)
    * [redis的pipline](#redis的pipline)
    * [海量key的查询](#海量key的查询)
    * [使用redis构建分布式锁](#使用redis构建分布式锁)
    * [使用redis构建异步队列](#使用redis构建异步队列)
    * [redis的持久化以及实战](#redis的持久化以及实战)
+   * [gossip流言协议](#gossip流言协议)
+   * [redis集群原理](#redis集群原理)
+   * [redis集群搭建](#redis集群搭建)
    * [redis的主从同步机制](#redis的主从同步机制)
    * [redis sentinel哨兵](#redis-sentinel哨兵)
    * [redis集群主从自动切换](#redis集群主从自动切换)
-   * [gossip流言协议](#gossip流言协议)
-   * [redis集群原理](#redis集群原理)
 
 
 ## redis数据结构
@@ -201,9 +201,6 @@ zset是可排序的set。实现方式有ziplist或skiplist。在同时满足以�
 
 ![此处输入图片的描述][8]
 
-redis集群搭建
-=========
-
 ## redis为何快
 
 主要是由于以下几个方面：
@@ -215,7 +212,7 @@ redis集群搭建
 ### 多路IO复用模型
 ![此处输入图片的描述][9]
 
-### 使用shell和pipline构造海量redis数据
+## 使用shell和pipline构造海量redis数据
 批量生成redis测试数据
 
 windows10环境下进入docker容器，power shell下执行：
@@ -419,13 +416,6 @@ Reading messages... (press Ctrl-C to quit)
 rdb aof rdb-aof混合格式（4.0以后的功能）
 redis的save bgsave指令
 
-## redis的主从同步机制
-
-全量同步后再进行增量同步
-
-## redis sentinel哨兵
-## redis集群主从自动切换
-
 ## gossip流言协议
 
  - https://zhuanlan.zhihu.com/p/41228196
@@ -451,7 +441,7 @@ gossip协议按个人理解，其目的是为了在某个特定的集群类传�
  
 ## redis集群原理
 
-redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前以及整理过，参见[这里][13]。
+redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前已经整理过，参见[这里](https://github.com/Audi-A7/learn/blob/master/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E7%AE%97%E6%B3%95)。
 
 redis集群的搭建需要区别于redis主从服务的搭建。
 
@@ -459,6 +449,16 @@ todo：redis集群搭建  redis主从搭建
 
  - https://blog.csdn.net/c295477887/article/details/52487621
 
+## redis集群搭建
+
+
+## redis的主从同步机制
+
+全量同步后再进行增量同步
+
+## redis sentinel哨兵
+## redis集群主从自动切换
+ 
  
  
 
@@ -475,4 +475,3 @@ todo：redis集群搭建  redis主从搭建
   [10]: https://github.com/Audi-A7/learn/blob/master/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
   [11]: https://github.com/Audi-A7/learn/blob/master/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md
   [12]: https://github.com/Audi-A7/learn/blob/master/image/redis/gossip.jpg?raw=true
-  [13]: https://github.com/Audi-A7/learn/blob/master/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E7%AE%97%E6%B3%95
