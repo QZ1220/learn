@@ -4,18 +4,39 @@
 
 ---
 
+* [redis学习](#redis学习)
+   * [redis数据结构](#redis数据结构)
+      * [参考链接](#参考链接)
+      * [redisObject](#redisobject)
+      * [string](#string)
+      * [list](#list)
+      * [hash](#hash)
+      * [set](#set)
+      * [zset](#zset)
+* [redis集群搭建](#redis集群搭建)
+   * [redis为何快](#redis为何快)
+      * [多路IO复用模型](#多路io复用模型)
+      * [使用shell和pipline构造海量redis数据](#使用shell和pipline构造海量redis数据)
+   * [redis的pipline](#redis的pipline)
+   * [海量key的查询](#海量key的查询)
+   * [使用redis构建分布式锁](#使用redis构建分布式锁)
+   * [使用redis构建异步队列](#使用redis构建异步队列)
+   * [redis的持久化以及实战](#redis的持久化以及实战)
+   * [redis的主从同步机制](#redis的主从同步机制)
+   * [redis sentinel哨兵](#redis-sentinel哨兵)
+   * [redis集群主从自动切换](#redis集群主从自动切换)
+   * [gossip流言协议](#gossip流言协议)
+   * [redis集群原理](#redis集群原理)
 
-redis数据结构
-=========
 
-参考链接
-----
+## redis数据结构
+
+### 参考链接
 
  - https://www.toutiao.com/i6731690432675185165/
  - https://www.cnblogs.com/hunternet/p/11248192.html
 
-redisObject
------------
+### redisObject
 理论上来说，所有redis存储的value都是一个redisObject，它的结构如下：
 ```c++
 typedef struct redisObject {
@@ -36,8 +57,7 @@ typedef struct redisObject {
 
 ![此处输入图片的描述][1]
 
-string
-------
+### string
 在Redis内部，string类型有两种底层储存结构。Redis会根据存储的数据及用户的操作指令自动选择合适的结构：
 
  - int：存放整数类型；
@@ -70,8 +90,7 @@ buf的扩容过程如下：
  
  
 
-list
-----
+### list
 list底层有两种数据结构：链表linkedlist和压缩列表ziplist。当list元素个数少且元素内容长度不大时，使用ziplist实现，否则使用linkedlist。
 
  - 链表
@@ -113,8 +132,7 @@ typedef struct list{
  
  
 
-hash
-----
+### hash
 hash底层有两种实现：压缩列表和字典（dict）。压缩列表刚刚上面已经介绍过了，下面主要介绍一下字典的数据结构。
 
  - 字典
@@ -127,14 +145,12 @@ hash底层有两种实现：压缩列表和字典（dict）。压缩列表刚刚
 
 为了解决一次性扩容耗时过多的情况，可以将扩容操作穿插在插入操作的过程中，分批完成。当负载因子触达阈值之后，只申请新空间，但并不将老的数据搬移到新散列表中。当有新数据要插入时，将新数据插入新散列表中，并且从老的散列表中拿出一个数据放入到新散列表。每次插入一个数据到散列表，都重复上面的过程。经过多次插入操作之后，老的散列表中的数据就一点一点全部搬移到新散列表中了。这样没有了集中的一次一次性数据搬移，插入操作就都变得很快了。这个过程也被称为**渐进式rehash**。
 
-set
----
+### set
 set里面没有重复的集合。set的实现比较简单。如果是整数类型，就直接使用整数集合intset（应该是类似于数组，然后数组内的元素有序存储的）。使用二分查找来辅助，速度还是挺快的。不过在插入的时候，由于要移动元素，时间复杂度是O(N)。
 
 如果不是整数类型，就使用上面在hash那一节介绍的字典。key为set的值，value为空（这一点和java里的hashset的实现机制是一样的）。
 
-zset
-----
+### zset
 zset是可排序的set。实现方式有ziplist或skiplist。在同时满足以下两个条件的时候使用ziplist，其他时候使用skiplist，两个条件如下：
 
  - 有序集合保存的元素数量小于128个
@@ -188,8 +204,7 @@ zset是可排序的set。实现方式有ziplist或skiplist。在同时满足以�
 redis集群搭建
 =========
 
-redis为何快
-========
+## redis为何快
 
 主要是由于以下几个方面：
 
@@ -197,12 +212,10 @@ redis为何快
  2. 采用单线程处理IO请求，避免高并发时线程上下文的频繁切换
  3. 采用多路IO复用模型，提高查询响应速度
 
-多路IO复用模型
-========
+### 多路IO复用模型
 ![此处输入图片的描述][9]
 
-使用shell和pipline构造海量redis数据
-==========================
+### 使用shell和pipline构造海量redis数据
 批量生成redis测试数据
 
 windows10环境下进入docker容器，power shell下执行：
@@ -241,8 +254,7 @@ apt-get update
 ```shell
 apt-get install -y vim
 ```
-redis的pipline
-=============
+## redis的pipline
 
  - https://blog.csdn.net/u011489043/article/details/78769428
  - https://redis.io/topics/pipelining
@@ -289,8 +301,7 @@ redis的pipline
 ![此处输入图片的描述][10]
 可以看出，再批量处理10K个命令的情况下，使用pipeline的性能是不使用情况的30倍。甚至，使用pipe的性能和本机内存操作的性能匹敌。
 
-海量key的查询
-========
+## 海量key的查询
 
 一般不应该使用keys进行大批量数据的过滤查询，因为他会阻塞redis的主进程，从而不能响应其他的查询操作。正确的做法是使用scan指令：
 
@@ -319,8 +330,7 @@ root@eb375872414d:/data# redis-cli
 ```
 测试数据有20W，游标从0开始，返回的147456可以作为下一次查询的开始位置。需要指出的是，count 10并不能精确的控制只返回10条数据，redis只是尽量保证返回的数据量和这个差不多。
 
-使用redis构建分布式锁
-=============
+## 使用redis构建分布式锁
 
 使用redis构建分布式锁的原理很简单，虽然我们的应用可能是多实例的，但是一般我们的redis只有一个（集群），我们往redis写入队（k,v），当redis已经存在该数据，那么久无法再次写入，就是这么个道理。
 
@@ -329,8 +339,7 @@ root@eb375872414d:/data# redis-cli
 稳妥的做法是，以java为例，获得锁时不设置过期时间（或者设置一个相对较大的时间），在finally语句块中进行redis锁的释放。
 
  
-使用redis构建异步队列
-=============
+## 使用redis构建异步队列
 
  - 非阻塞：
 
@@ -404,24 +413,20 @@ Reading messages... (press Ctrl-C to quit)
 
 这种方式任然无法进行消息的持久化，如果需要持久化需要专业的消息队列，如[rabbitmq][11]。 
 
-redis的持久化以及实战
-=============
+## redis的持久化以及实战
 
 
 rdb aof rdb-aof混合格式（4.0以后的功能）
 redis的save bgsave指令
 
-redis的主从同步机制
-==========
+## redis的主从同步机制
 
 全量同步后再进行增量同步
 
-redis sentinel哨兵
-=======
-redis集群主从自动切换
+## redis sentinel哨兵
+## redis集群主从自动切换
 
-gossip流言协议
-==========
+## gossip流言协议
 
  - https://zhuanlan.zhihu.com/p/41228196
  - https://cristian.regolo.cc/2015/09/05/life-in-a-redis-cluster.html
@@ -444,8 +449,7 @@ gossip协议按个人理解，其目的是为了在某个特定的集群类传�
  
  
  
-redis集群原理
-=========
+## redis集群原理
 
 redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前以及整理过，参见[这里][13]。
 
