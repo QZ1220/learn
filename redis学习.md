@@ -442,7 +442,7 @@ gossip协议按个人理解，其目的是为了在某个特定的集群类传�
  
 ## redis主从搭建
 
-所谓主从，其实就是数据备份，避免单节点情况下出现的数据丢失。
+所谓主从，其实就是数据备份，避免单节点情况下出现的数据丢失，各个节点理论上都存储了全量的数据，忽略集群数据同步时延。
 
 这里我们以一主两从的模式来搭建，使用docker（compose模式）实现。
 
@@ -452,6 +452,41 @@ redis tag:
 
 - https://redis.io/topics/sentinel
 - https://www.jianshu.com/p/f185721eee57
+
+```shell
+#  启动命令  docker-compose up  （-d可以后台运行）docker-compose up  xx-service 可以指定启动某一个应用
+#  停止命令  docker-compose up
+version: '2'
+
+services:
+  master:
+    image: redis:6.2.3
+    ports:
+      - 6379:6379
+    volumes:
+      - /Users/wangquanzhou/redis/6379/data:/data
+      - /Users/wangquanzhou/redis/6379/conf/redis.conf:/etc/redis/redis.conf
+
+  slave-01:
+    image: redis:6.2.3
+    ports:
+      - 6380:6379
+    volumes:
+      - /Users/wangquanzhou/redis/6380/data:/data
+      - /Users/wangquanzhou/redis/6380/conf/redis.conf:/etc/redis/redis.conf
+
+  slave-02:
+    image: redis:6.2.3
+    ports:
+      - 6381:6379
+    volumes:
+      - /Users/wangquanzhou/redis/6381/data:/data
+      - /Users/wangquanzhou/redis/6381/conf/redis.conf:/etc/redis/redis.conf
+```
+
+保存为`docker-compose.yml`，使用`docker-compose up -d`启动集群。
+
+然后准备集群节点的conf配置文件。
 
 ## redis集群原理
 
