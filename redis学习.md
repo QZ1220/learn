@@ -453,6 +453,8 @@ redis tag:
 - https://redis.io/topics/sentinel
 - https://www.jianshu.com/p/f185721eee57
 
+对于主从环境中的redis配置，这里我参考redis[官方](https://redis.io/topics/config)的[conf文件](./redis_6_origin.conf)进行修改得到，主要集中修改redis的`REPLICATION`部分配置，修改后的配置文件在[这里](./redis_6_slave.conf)。
+
 ```shell
 #  启动命令  docker-compose up  （-d可以后台运行）docker-compose up  xx-service 可以指定启动某一个应用
 #  停止命令  docker-compose up
