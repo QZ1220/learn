@@ -489,7 +489,7 @@ services:
       - /Users/wangquanzhou/redis/6381/conf/redis.conf:/etc/redis/redis.conf
 ```
 
-保存为`docker-compose.yml`，使用`docker-compose up -d`启动集群。
+保存为`docker-compose.yml`，使用`docker-compose up -d`启动集群。主从同步时，可以配置是优先响应客户端的请求，还是优先进行主从复制。
 
 上面就搭建了一个主从集群，为了实现`HA`，我们可以考虑为每个节点启动一个哨兵，用来监控redis的可用性。
 
@@ -532,7 +532,7 @@ services:
 
 ## redis集群原理
 
-redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前已经整理过，参见[这里](https://github.com/Audi-A7/learn/blob/master/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E7%AE%97%E6%B3%95)。
+redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前已经整理过，参见[这里](https://github.com/AudiVehicle/learn/blob/master/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E7%AE%97%E6%B3%95)。
 
 redis集群的搭建需要区别于redis主从服务的搭建，其实这二者的差别就是：集群是每个节点保存一部分数据，而主从就是每个节点都保存了全量（理论上）的数据（为啥是理论上，因为主从复制的期间可能因为网络等原因出现数据延迟等）。
 
