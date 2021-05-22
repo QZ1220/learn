@@ -532,13 +532,26 @@ services:
 
 ## redis集群原理
 
-redis集群应用了一致性hash算法的原理，据此将数据存入到多个node中，关于一致性hash算法之前已经整理过，参见[这里](https://github.com/AudiVehicle/learn/blob/master/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E7%AE%97%E6%B3%95)。
-
 redis集群的搭建需要区别于redis主从服务的搭建，其实这二者的差别就是：集群是每个节点保存一部分数据，而主从就是每个节点都保存了全量（理论上）的数据（为啥是理论上，因为主从复制的期间可能因为网络等原因出现数据延迟等）。
 
-- https://blog.csdn.net/c295477887/article/details/52487621
+redis集群并没有使用[一致性hash算法](https://github.com/AudiVehicle/learn/blob/master/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E7%AE%97%E6%B3%95)。可以参见[这里](https://redis.io/topics/cluster-tutorial)的`Redis Cluster data sharding`小节。redis使用的是`hash slot`的概念来进行数据饭分节点储存。针对一个特定`key`，redis使用`CRC16(key) mod 16384`来确定key存储的node。
 
-todo：redis集群搭建  
+假如我们有三个node，A、B、C，每个节点负责一部分hash slot，那么一个key最终会落到三个节点中的某一个。
+```shell
+Node A contains hash slots from 0 to 5500.
+Node B contains hash slots from 5501 to 11000.
+Node C contains hash slots from 11001 to 16383.
+```
+
+如果由于某个节点宕机，那么其中一部分hash slot将无法处理。为了保证集群高可用，我们可以在每个node上部署一个到多个从节点。如下图所示：
+![redis-cluster](./image/redis/redis-cluster.png)
+
+
+
+
+
+
+
 
  
 
