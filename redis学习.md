@@ -465,6 +465,7 @@ services:
     image: redis:6.2.3
     ports:
       - 6379:6379
+    command: redis-server /etc/redis/redis.conf
     volumes:
       - /Users/wangquanzhou/redis/6379/data:/data
       - /Users/wangquanzhou/redis/6379/conf/redis.conf:/etc/redis/redis.conf
@@ -473,6 +474,7 @@ services:
     image: redis:6.2.3
     ports:
       - 6380:6379
+    command: redis-server /etc/redis/redis.conf
     volumes:
       - /Users/wangquanzhou/redis/6380/data:/data
       - /Users/wangquanzhou/redis/6380/conf/redis.conf:/etc/redis/redis.conf
@@ -481,6 +483,7 @@ services:
     image: redis:6.2.3
     ports:
       - 6381:6379
+    command: redis-server /etc/redis/redis.conf
     volumes:
       - /Users/wangquanzhou/redis/6381/data:/data
       - /Users/wangquanzhou/redis/6381/conf/redis.conf:/etc/redis/redis.conf
@@ -488,7 +491,44 @@ services:
 
 保存为`docker-compose.yml`，使用`docker-compose up -d`启动集群。
 
-然后准备集群节点的conf配置文件。
+上面就搭建了一个主从集群，为了实现`HA`，我们可以考虑为每个节点启动一个哨兵，用来监控redis的可用性。
+
+我们同样使用`compose`模式在每个节点启动哨兵集群.原生的reids哨兵配置文件在[这里](./sentinel_origin.conf)，修改后的在[这里](sentinel.conf).
+
+```shell
+#  启动命令  docker-compose up  （-d可以后台运行）docker-compose up  xx-service 可以指定启动某一个应用
+#  停止命令  docker-compose up
+version: '2'
+
+services:
+
+# 为每个节点设置哨兵
+  sentinel:
+    image: redis:6.2.3
+    ports:
+      - 26379:26379
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - /Users/wangquanzhou/redis/6379/conf/sentinel.conf:/etc/redis/sentinel.conf
+      - /Users/wangquanzhou/redis/6379/log:/var/log
+  sentinel-01:
+    image: redis:6.2.3
+    ports:
+      - 26380:26380
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - /Users/wangquanzhou/redis/6380/conf/sentinel.conf:/etc/redis/sentinel.conf
+      - /Users/wangquanzhou/redis/6380/log:/var/log
+  sentinel-02:
+    image: redis:6.2.3
+    ports:
+      - 26381:26381
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - /Users/wangquanzhou/redis/6381/conf/sentinel.conf:/etc/redis/sentinel.conf
+      - /Users/wangquanzhou/redis/6381/log:/var/log
+```
+使用`docker-compose up -d`启动集群哨兵。
 
 ## redis集群原理
 
