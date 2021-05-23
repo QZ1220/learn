@@ -563,13 +563,105 @@ Node C contains hash slots from 11001 to 16383.
 So 16k was in the right range to ensure enough slots per master with a max of 1000 maters, but a small enough number to propagate the slot configuration as a raw bitmap easily. Note that in small clusters the bitmap would be hard to compress because when N is small the bitmap would have slots/N bits set that is a large percentage of bits set.
 
 
+### 集群一致性
 
+关于官方对于一致性的解释可以参看[这里](https://redis.io/topics/cluster-tutorial)的「Redis Cluster consistency guarantees」。
 
-
-
- 
+redis集群本身并不是强一致性的。由于主从复制是异步的，如果主从复制时，主crash，从成为新的master，那么将面临数据的丢失的可能。此外在网络的情况下，有可能出现数据不一致的情况。
 
 ## redis集群搭建
+
+根据redis[官方文档](https://redis.io/topics/cluster-tutorial)对于集群搭建部分「Creating and using a Redis Cluster」的介绍，我们可以很容易的搭建一个redis集群（redis 5以下的版本方式有点差异，这里我们仅以redis 6为基础进行搭建）。
+
+我们的目标是搭建，一个3主3从的redis集群，如下图所示：
+
+![redis-cluster](./image/redis/redis-cluster-Page-2.png)
+
+1、准备6个开启了cluser属性的redis节点，配置可以参考官方给出配置：
+```shell
+port 7000  ## 各个节点的port需要自己更改
+cluster-enabled yes
+cluster-config-file nodes.conf
+cluster-node-timeout 5000
+appendonly yes
+```
+
+这里我们依然使用docker compose搭建：
+```shell
+#  启动命令  docker-compose up  （-d可以后台运行）docker-compose up  xx-service 可以指定启动某一个应用
+#  停止命令  docker-compose up
+version: '2'
+
+services:
+  node1:
+    image: redis:6.2.3
+    ports:
+      - 7000:7000
+    command: redis-server /etc/redis/redis.conf
+    volumes:
+      - /Users/wangquanzhou/redis/cluster/7000/data:/data
+      - /Users/wangquanzhou/redis/cluster/7000/conf/redis.conf:/etc/redis/redis.conf
+      - /Users/wangquanzhou/redis/cluster/7000/log:/var/log
+
+  node2:
+    image: redis:6.2.3
+    ports:
+      - 7001:7000
+    command: redis-server /etc/redis/redis.conf
+    volumes:
+      - /Users/wangquanzhou/redis/cluster/7001/data:/data
+      - /Users/wangquanzhou/redis/cluster/7001/conf/redis.conf:/etc/redis/redis.conf
+      - /Users/wangquanzhou/redis/cluster/7001/log:/var/log
+
+  node3:
+    image: redis:6.2.3
+    ports:
+      - 7002:7000
+    command: redis-server /etc/redis/redis.conf
+    volumes:
+      - /Users/wangquanzhou/redis/cluster/7002/data:/data
+      - /Users/wangquanzhou/redis/cluster/7002/conf/redis.conf:/etc/redis/redis.conf
+      - /Users/wangquanzhou/redis/cluster/7002/log:/var/log
+
+  node4:
+    image: redis:6.2.3
+    ports:
+      - 7003:7000
+    command: redis-server /etc/redis/redis.conf
+    volumes:
+      - /Users/wangquanzhou/redis/cluster/7003/data:/data
+      - /Users/wangquanzhou/redis/cluster/7003/conf/redis.conf:/etc/redis/redis.conf
+      - /Users/wangquanzhou/redis/cluster/7003/log:/var/log
+
+  node5:
+    image: redis:6.2.3
+    ports:
+      - 7004:7000
+    command: redis-server /etc/redis/redis.conf
+    volumes:
+      - /Users/wangquanzhou/redis/cluster/7004/data:/data
+      - /Users/wangquanzhou/redis/cluster/7004/conf/redis.conf:/etc/redis/redis.conf
+      - /Users/wangquanzhou/redis/cluster/7004/log:/var/log
+
+  node6:
+    image: redis:6.2.3
+    ports:
+      - 7005:7000
+    command: redis-server /etc/redis/redis.conf
+    volumes:
+      - /Users/wangquanzhou/redis/cluster/7005/data:/data
+      - /Users/wangquanzhou/redis/cluster/7005/conf/redis.conf:/etc/redis/redis.conf
+      - /Users/wangquanzhou/redis/cluster/7005/log:/var/log
+```
+
+使用`docker-compse up`启动集群节点，然后使用如下命令将各节点组成一个集群：
+```shell
+redis-cli --cluster create 192.168.1.7:7000 192.168.1.7:7001 \
+192.168.1.7:7002 192.168.1.7:7003 192.168.1.7:7004 192.168.1.7:7005 \
+--cluster-replicas 1
+```
+
+
 
 
 
