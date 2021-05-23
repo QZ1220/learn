@@ -24,10 +24,9 @@
    * [gossip流言协议](#gossip流言协议)
    * [redis主从搭建](#redis主从搭建)
    * [redis集群原理](#redis集群原理)
+      * [什么是CRC16](#什么是crc16)
+      * [为什么是16384](#为什么是16384)
    * [redis集群搭建](#redis集群搭建)
-   * [redis的主从同步机制](#redis的主从同步机制)
-   * [redis sentinel哨兵](#redis-sentinel哨兵)
-   * [redis集群主从自动切换](#redis集群主从自动切换)
 
 
 ## redis数据结构
@@ -544,9 +543,24 @@ Node C contains hash slots from 11001 to 16383.
 ```
 
 如果由于某个节点宕机，那么其中一部分hash slot将无法处理。为了保证集群高可用，我们可以在每个node上部署一个到多个从节点。如下图所示：
+
 ![redis-cluster](./image/redis/redis-cluster.png)
 
+### 什么是CRC16
 
+- https://emn178.github.io/online-tools/crc16.html
+- https://wenku.baidu.com/view/85758f36eefdc8d376ee3256.html
+
+本质上来说就是一种数据校验算法，且无论输入的数据长度是多少得到的数据都是定长的（16bit的16进制数）。
+
+### 为什么是16384
+
+- https://www.jianshu.com/p/de268f62f99b
+- https://github.com/redis/redis/issues/2576
+
+16384=2^14=16K，redis集群节点间发送心跳时，需要附带上节点的slot信息，使用位图压缩后需要2K的空间进行传输。如果使用2^16=64K，需要8K的空间。集群冗余信息占的比较多，且作者认为一个集群有1000+节点的情况很少出现，因此选择了16384这个数。
+
+So 16k was in the right range to ensure enough slots per master with a max of 1000 maters, but a small enough number to propagate the slot configuration as a raw bitmap easily. Note that in small clusters the bitmap would be hard to compress because when N is small the bitmap would have slots/N bits set that is a large percentage of bits set.
 
 
 
@@ -557,16 +571,6 @@ Node C contains hash slots from 11001 to 16383.
 
 ## redis集群搭建
 
-
-## redis的主从同步机制
-
-全量同步后再进行增量同步
-
-## redis sentinel哨兵
-## redis集群主从自动切换
- 
- 
- 
 
 
   [1]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_object.jpeg?raw=true

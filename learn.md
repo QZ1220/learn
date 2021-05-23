@@ -42,7 +42,7 @@ git学习
 redis学习
 -------
 
-[redis数据结构学习](https://github.com/Audi-A7/learn/blob/master/redis%E5%AD%A6%E4%B9%A0.md)
+[redis学习](https://github.com/Audi-A7/learn/blob/master/redis%E5%AD%A6%E4%B9%A0.md)
 
 netty学习
 -------
@@ -56,7 +56,7 @@ netty学习
 
 [tap4fun](https://github.com/Audi-A7/learn/blob/master/%E5%B7%A5%E4%BD%9C%E6%80%BB%E7%BB%93.md)
 
-垃圾收集器
------
+算法
+---
 
-[G1](https://github.com/Audi-A7/learn/blob/master/G1/G1.md)
+[数据结构与算法](https://github.com/Audi-A7/learn/blob/master/%E7%AE%97%E6%B3%95.md)
