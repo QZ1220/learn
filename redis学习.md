@@ -26,7 +26,9 @@
    * [redis集群原理](#redis集群原理)
       * [什么是CRC16](#什么是crc16)
       * [为什么是16384](#为什么是16384)
+      * [集群一致性](#集群一致性)
    * [redis集群搭建](#redis集群搭建)
+   * [docker的networking](#docker的networking)
 
 
 ## redis数据结构
@@ -661,7 +663,10 @@ redis-cli --cluster create 192.168.1.7:7000 192.168.1.7:7001 \
 --cluster-replicas 1
 ```
 
+## docker的networking
 
+- https://docs.docker.com/network/
+- https://www.cnblogs.com/mrhelloworld/p/docker14.html
 
 
 
