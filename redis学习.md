@@ -28,6 +28,8 @@
       * [为什么是16384](#为什么是16384)
       * [集群一致性](#集群一致性)
    * [redis集群搭建](#redis集群搭建)
+      * [搭建](#搭建)
+      * [集群扩缩容](#集群扩缩容)
    * [docker的networking](#docker的networking)
 
 
@@ -573,6 +575,8 @@ redis集群本身并不是强一致性的。由于主从复制是异步的，如
 
 ## redis集群搭建
 
+### 搭建
+
 根据redis[官方文档](https://redis.io/topics/cluster-tutorial)对于集群搭建部分「Creating and using a Redis Cluster」的介绍，我们可以很容易的搭建一个redis集群（redis 5以下的版本方式有点差异，这里我们仅以redis 6为基础进行搭建）。
 
 我们的目标是搭建，一个3主3从的redis集群，如下图所示：
@@ -749,7 +753,54 @@ redis-cli --cluster create 192.168.1.7:7000 192.168.1.7:7001 \
 
 ![redis-cluster](./image/redis/redis-cluster_run.jpg)
 
+简单测试一下集群是否正常工作：
+```shell
+webhost-dev65# redis-cli -c -h 172.20.110.65 -p 7000
+172.20.110.65:7000>
+172.20.110.65:7000>
+172.20.110.65:7000>
+172.20.110.65:7000> set wang hh
+OK
+172.20.110.65:7000> set name wang
+-> Redirected to slot [5798] located at 172.20.110.65:7001
+OK
+172.20.110.65:7000> cluster info
+cluster_state:ok
+cluster_slots_assigned:16384
+cluster_slots_ok:16384
+cluster_slots_pfail:0
+cluster_slots_fail:0
+cluster_known_nodes:6
+cluster_size:3
+cluster_current_epoch:6
+cluster_my_epoch:2
+cluster_stats_messages_ping_sent:7822
+cluster_stats_messages_pong_sent:7886
+cluster_stats_messages_meet_sent:1
+cluster_stats_messages_sent:15709
+cluster_stats_messages_ping_received:7886
+cluster_stats_messages_pong_received:7823
+cluster_stats_messages_received:15709
+172.20.110.65:7000> cluster nodes
+adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e 172.20.110.65:7001@17001 myself,master - 0 1621856410000 2 connected 5461-10922
+4de31af2924778214f9de093a8ad3d08776e7064 172.20.110.65:7003@17003 slave 93f999e6e3ed034a576d457e5a67e392f386eb79 0 1621856410000 3 connected
+4323e3894a9173d608d2fd52e1b4d4345aa8cfe4 172.20.110.65:7004@17004 slave 13e1dc0efc1072fe38bf938d15fa39b7b8b46bff 0 1621856411334 1 connected
+93f999e6e3ed034a576d457e5a67e392f386eb79 172.20.110.65:7002@17002 master - 0 1621856410331 3 connected 10923-16383
+13e1dc0efc1072fe38bf938d15fa39b7b8b46bff 172.20.110.65:7000@17000 master - 0 1621856411535 1 connected 0-5460
+697ca741233cc451817194f358cff3a71a81ea58 172.20.110.65:7005@17005 slave adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e 0 1621856410030 2 connected
+172.20.110.65:7000>
+```
 
+注意链接redis的时候，记得加上`-c`参数，否则你在`set`元素的时候可能会得到下面的错误信息，[参考链接](https://serverfault.com/questions/812156/redis-cluster-error-moved)：
+```shell
+172.20.110.65:7000> set name wang
+(error) MOVED 5798 172.20.110.65:7001
+172.20.110.65:7000> get name
+(error) MOVED 5798 172.20.110.65:7001
+```
+### 集群扩缩容
+
+todo。。。
 
 ## docker的networking
 
