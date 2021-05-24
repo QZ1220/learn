@@ -582,13 +582,25 @@ redis集群本身并不是强一致性的。由于主从复制是异步的，如
 1、准备6个开启了cluser属性的redis节点，配置可以参考官方给出配置：
 ```shell
 port 7000  ## 各个节点的port需要自己更改
+protected-mode no
 cluster-enabled yes
 cluster-config-file nodes.conf
 cluster-node-timeout 5000
 appendonly yes
+cluster-announce-ip xx.xx.xx.xx
+cluster-announce-port 7000  ## 各个节点的port需要自己更改
+cluster-announce-bus-port 17000   ## 各个节点的port需要自己更改
+
 ```
 
-这里我们依然使用docker compose搭建：
+这里我们依然使用docker compose搭建，但是redis的[官网文档](https://redis.io/topics/cluster-tutorial)的「Redis Cluster and Docker」已经指出，如果要使用docker搭建redis cluster的话需要使用`host`[网络模式](https://docs.docker.com/network/)。需要注意的是，使用`host`的时候是不允许在`compose`文件中做端口映射的。
+
+注意一点，[`host`网络模式只在`linux`机器上有用](https://docs.docker.com/network/host/)，所以就是说想搭建redis-cluter需要在linux上搭。
+
+```shell
+The host networking driver only works on Linux hosts, and is not supported on Docker Desktop for Mac, Docker Desktop for Windows, or Docker EE for Windows Server.
+```
+
 ```shell
 #  启动命令  docker-compose up  （-d可以后台运行）docker-compose up  xx-service 可以指定启动某一个应用
 #  停止命令  docker-compose up
@@ -597,71 +609,147 @@ version: '2'
 services:
   node1:
     image: redis:6.2.3
-    ports:
-      - 7000:7000
+    # ports:
+    #   - 7000:7000
+    #   - 17000:17000
     command: redis-server /etc/redis/redis.conf
+    network_mode: host # host 网络模式
     volumes:
-      - /Users/wangquanzhou/redis/cluster/7000/data:/data
-      - /Users/wangquanzhou/redis/cluster/7000/conf/redis.conf:/etc/redis/redis.conf
-      - /Users/wangquanzhou/redis/cluster/7000/log:/var/log
+      - /root/redis/cluster/7000/data:/data
+      - /root/redis/cluster/7000/conf/redis.conf:/etc/redis/redis.conf
+      - /root/redis/cluster/7000/log:/var/log
 
   node2:
     image: redis:6.2.3
-    ports:
-      - 7001:7000
+    # ports:
+    #   - 7001:7001
+    #   - 17001:17001
     command: redis-server /etc/redis/redis.conf
+    network_mode: host # host 网络模式
     volumes:
-      - /Users/wangquanzhou/redis/cluster/7001/data:/data
-      - /Users/wangquanzhou/redis/cluster/7001/conf/redis.conf:/etc/redis/redis.conf
-      - /Users/wangquanzhou/redis/cluster/7001/log:/var/log
+      - /root/redis/cluster/7001/data:/data
+      - /root/redis/cluster/7001/conf/redis.conf:/etc/redis/redis.conf
+      - /root/redis/cluster/7001/log:/var/log
 
   node3:
     image: redis:6.2.3
-    ports:
-      - 7002:7000
+    # ports:
+    #   - 7002:7002
+    #   - 17002:17002
     command: redis-server /etc/redis/redis.conf
+    network_mode: host # host 网络模式
     volumes:
-      - /Users/wangquanzhou/redis/cluster/7002/data:/data
-      - /Users/wangquanzhou/redis/cluster/7002/conf/redis.conf:/etc/redis/redis.conf
-      - /Users/wangquanzhou/redis/cluster/7002/log:/var/log
+      - /root/redis/cluster/7002/data:/data
+      - /root/redis/cluster/7002/conf/redis.conf:/etc/redis/redis.conf
+      - /root/redis/cluster/7002/log:/var/log
 
   node4:
     image: redis:6.2.3
-    ports:
-      - 7003:7000
+    # ports:
+    #   - 7003:7003
+    #   - 17003:17003
     command: redis-server /etc/redis/redis.conf
+    network_mode: host # host 网络模式
     volumes:
-      - /Users/wangquanzhou/redis/cluster/7003/data:/data
-      - /Users/wangquanzhou/redis/cluster/7003/conf/redis.conf:/etc/redis/redis.conf
-      - /Users/wangquanzhou/redis/cluster/7003/log:/var/log
+      - /root/redis/cluster/7003/data:/data
+      - /root/redis/cluster/7003/conf/redis.conf:/etc/redis/redis.conf
+      - /root/redis/cluster/7003/log:/var/log
 
   node5:
     image: redis:6.2.3
-    ports:
-      - 7004:7000
+    # ports:
+    #   - 7004:7004
+    #   - 17004:17004
     command: redis-server /etc/redis/redis.conf
+    network_mode: host # host 网络模式
     volumes:
-      - /Users/wangquanzhou/redis/cluster/7004/data:/data
-      - /Users/wangquanzhou/redis/cluster/7004/conf/redis.conf:/etc/redis/redis.conf
-      - /Users/wangquanzhou/redis/cluster/7004/log:/var/log
+      - /root/redis/cluster/7004/data:/data
+      - /root/redis/cluster/7004/conf/redis.conf:/etc/redis/redis.conf
+      - /root/redis/cluster/7004/log:/var/log
 
   node6:
     image: redis:6.2.3
-    ports:
-      - 7005:7000
+    # ports:
+    #   - 7005:7005
+    #   - 17005:17005
     command: redis-server /etc/redis/redis.conf
+    network_mode: host # host 网络模式
     volumes:
-      - /Users/wangquanzhou/redis/cluster/7005/data:/data
-      - /Users/wangquanzhou/redis/cluster/7005/conf/redis.conf:/etc/redis/redis.conf
-      - /Users/wangquanzhou/redis/cluster/7005/log:/var/log
+      - /root/redis/cluster/7005/data:/data
+      - /root/redis/cluster/7005/conf/redis.conf:/etc/redis/redis.conf
+      - /root/redis/cluster/7005/log:/var/log
 ```
 
-使用`docker-compse up`启动集群节点，然后使用如下命令将各节点组成一个集群：
+使用`docker-compse up`启动集群节点，输出日志：
+```shell
+➜  cluster docker-compose up
+Creating cluster_node3_1
+Creating cluster_node6_1
+Creating cluster_node1_1
+Creating cluster_node5_1
+Creating cluster_node2_1
+Creating cluster_node4_1
+Attaching to cluster_node3_1, cluster_node6_1, cluster_node5_1, cluster_node4_1, cluster_node2_1, cluster_node1_1
+node6_1  | 1:C 24 May 2021 11:12:47.266 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+node6_1  | 1:C 24 May 2021 11:12:47.266 # Redis version=6.2.3, bits=64, commit=00000000, modified=0, pid=1, just started
+node6_1  | 1:C 24 May 2021 11:12:47.266 # Configuration loaded
+node6_1  | 1:M 24 May 2021 11:12:47.268 * monotonic clock: POSIX clock_gettime
+node6_1  | 1:M 24 May 2021 11:12:47.278 * No cluster configuration found, I'm 8eb1d27200ba908a77e2ce194dbbe72311730308
+node6_1  | 1:M 24 May 2021 11:12:47.280 * Running mode=cluster, port=7005.
+node6_1  | 1:M 24 May 2021 11:12:47.280 # Server initialized
+node6_1  | 1:M 24 May 2021 11:12:47.284 * Ready to accept connections
+node3_1  | 1:C 24 May 2021 11:12:47.259 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+node3_1  | 1:C 24 May 2021 11:12:47.259 # Redis version=6.2.3, bits=64, commit=00000000, modified=0, pid=1, just started
+node3_1  | 1:C 24 May 2021 11:12:47.259 # Configuration loaded
+node3_1  | 1:M 24 May 2021 11:12:47.260 * monotonic clock: POSIX clock_gettime
+node3_1  | 1:M 24 May 2021 11:12:47.276 * No cluster configuration found, I'm 53bcb4d81081126e5ece356de113ccf849375d02
+node3_1  | 1:M 24 May 2021 11:12:47.306 * Running mode=cluster, port=7002.
+node3_1  | 1:M 24 May 2021 11:12:47.306 # Server initialized
+node3_1  | 1:M 24 May 2021 11:12:47.310 * Ready to accept connections
+node5_1  | 1:C 24 May 2021 11:12:47.310 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+node5_1  | 1:C 24 May 2021 11:12:47.310 # Redis version=6.2.3, bits=64, commit=00000000, modified=0, pid=1, just started
+node5_1  | 1:C 24 May 2021 11:12:47.310 # Configuration loaded
+node4_1  | 1:C 24 May 2021 11:12:47.383 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+node5_1  | 1:M 24 May 2021 11:12:47.311 * monotonic clock: POSIX clock_gettime
+node4_1  | 1:C 24 May 2021 11:12:47.383 # Redis version=6.2.3, bits=64, commit=00000000, modified=0, pid=1, just started
+node4_1  | 1:C 24 May 2021 11:12:47.383 # Configuration loaded
+node4_1  | 1:M 24 May 2021 11:12:47.385 * monotonic clock: POSIX clock_gettime
+node2_1  | 1:C 24 May 2021 11:12:47.408 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+node5_1  | 1:M 24 May 2021 11:12:47.326 * No cluster configuration found, I'm 5e5e4cdaa5b3075c3565ea7ae056ff52bc639881
+node2_1  | 1:C 24 May 2021 11:12:47.408 # Redis version=6.2.3, bits=64, commit=00000000, modified=0, pid=1, just started
+node4_1  | 1:M 24 May 2021 11:12:47.394 * No cluster configuration found, I'm 6a94d8c312cd9990abe76e9e68755d79dcb4b79a
+node5_1  | 1:M 24 May 2021 11:12:47.329 * Running mode=cluster, port=7004.
+node1_1  | 1:C 24 May 2021 11:12:47.396 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+node2_1  | 1:C 24 May 2021 11:12:47.408 # Configuration loaded
+node5_1  | 1:M 24 May 2021 11:12:47.329 # Server initialized
+node1_1  | 1:C 24 May 2021 11:12:47.396 # Redis version=6.2.3, bits=64, commit=00000000, modified=0, pid=1, just started
+node2_1  | 1:M 24 May 2021 11:12:47.413 * monotonic clock: POSIX clock_gettime
+node4_1  | 1:M 24 May 2021 11:12:47.405 * Running mode=cluster, port=7003.
+node1_1  | 1:C 24 May 2021 11:12:47.396 # Configuration loaded
+node5_1  | 1:M 24 May 2021 11:12:47.331 * Ready to accept connections
+node4_1  | 1:M 24 May 2021 11:12:47.405 # Server initialized
+node1_1  | 1:M 24 May 2021 11:12:47.397 * monotonic clock: POSIX clock_gettime
+node4_1  | 1:M 24 May 2021 11:12:47.409 * Ready to accept connections
+node1_1  | 1:M 24 May 2021 11:12:47.406 * No cluster configuration found, I'm 7a826ff4343be98c597b821c397f450e7d7f7430
+node1_1  | 1:M 24 May 2021 11:12:47.411 * Running mode=cluster, port=7000.
+node1_1  | 1:M 24 May 2021 11:12:47.411 # Server initialized
+node1_1  | 1:M 24 May 2021 11:12:47.416 * Ready to accept connections
+node2_1  | 1:M 24 May 2021 11:12:47.441 * No cluster configuration found, I'm 4041b580db879b261207595ab4414b8f34503d1e
+node2_1  | 1:M 24 May 2021 11:12:47.444 * Running mode=cluster, port=7001.
+node2_1  | 1:M 24 May 2021 11:12:47.444 # Server initialized
+node2_1  | 1:M 24 May 2021 11:12:47.446 * Ready to accept connections
+```
+
+然后在宿主机上，使用如下命令将各节点组成一个集群：
 ```shell
 redis-cli --cluster create 192.168.1.7:7000 192.168.1.7:7001 \
 192.168.1.7:7002 192.168.1.7:7003 192.168.1.7:7004 192.168.1.7:7005 \
 --cluster-replicas 1
 ```
+
+![redis-cluster](./image/redis/redis-cluster_run.jpg)
+
+
 
 ## docker的networking
 
