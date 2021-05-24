@@ -31,6 +31,9 @@
       * [搭建](#搭建)
       * [集群扩缩容](#集群扩缩容)
    * [docker的networking](#docker的networking)
+      * [bridge networks](#bridge-networks)
+      * [overlay networks](#overlay-networks)
+      * [host networking](#host-networking)
 
 
 ## redis数据结构
@@ -805,7 +808,36 @@ todo。。。
 ## docker的networking
 
 - https://docs.docker.com/network/
-- https://www.cnblogs.com/mrhelloworld/p/docker14.html
+- https://www.cnblogs.com/mrhelloworld/p/docker11.html
+
+### bridge networks
+
+- https://docs.docker.com/network/bridge/
+
+这是docker默认的网络模式，多个容器之间互相独立，即便是同一台宿主机的多个容器在容器内使用相同的端口也互不影响，如下图所示：
+
+![redis-cluster](./image/redis/docker_network_bridge.png)
+
+### overlay networks
+
+- https://docs.docker.com/network/overlay/
+
+`overlay`网络是一种可以实现跨宿主机之间的容器通信的网络，由于涉及到跨服务器之间通信，创建overlay网络之前需要服务器满足如下要求：
+
+Firewall rules for Docker daemons using overlay networks
+
+You need the following ports open to traffic to and from each Docker host participating on an overlay network:
+
+- TCP port 2377 for cluster management communications
+- TCP and UDP port 7946 for communication among nodes
+- UDP port 4789 for overlay network traffic
+
+Before you can create an overlay network, you need to either initialize your Docker daemon as a swarm manager using `docker swarm init` or join it to an existing swarm using `docker swarm join`. Either of these creates the default ingress overlay network which is used by swarm services by default. You need to do this even if you never plan to use swarm services. Afterward, you can create additional user-defined overlay networks.
+
+当你创建或者假如一个swarm集群以后，默认会在宿主机上创建`ingress`和`docker_gwbridge`。前者负责swarm服务之间的网络请求调度，后者负责连接不同的docker宿主机之间的网络。
+
+### host networking
+
 
 
 
