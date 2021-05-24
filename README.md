@@ -42,7 +42,7 @@ git学习
 redis学习
 -------
 
-[redis数据结构学习](https://github.com/Audi-A7/learn/blob/master/redis%E5%AD%A6%E4%B9%A0.md)
+[redis学习](https://github.com/Audi-A7/learn/blob/master/redis%E5%AD%A6%E4%B9%A0.md)
 
 netty学习
 -------
