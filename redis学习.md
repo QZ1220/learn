@@ -29,6 +29,7 @@
       * [集群一致性](#集群一致性)
    * [redis集群搭建](#redis集群搭建)
       * [搭建](#搭建)
+      * [结合springboot应用](#结合springboot应用)
       * [集群扩缩容](#集群扩缩容)
    * [docker的networking](#docker的networking)
       * [bridge networks](#bridge-networks)
@@ -602,7 +603,7 @@ cluster-announce-bus-port 17000   ## 各个节点的port需要自己更改
 
 这里我们依然使用docker compose搭建，但是redis的[官网文档](https://redis.io/topics/cluster-tutorial)的「Redis Cluster and Docker」已经指出，如果要使用docker搭建redis cluster的话需要使用`host`[网络模式](https://docs.docker.com/network/)。需要注意的是，使用`host`的时候是不允许在`compose`文件中做端口映射的。
 
-注意一点，[`host`网络模式只在`linux`机器上有用](https://docs.docker.com/network/host/)，所以就是说想搭建redis-cluter需要在linux上搭。
+注意一点，[`host`网络模式只在`linux`机器上有用](https://docs.docker.com/network/host/)，所以就是说想基于`docker`搭建`redis-cluter`需要在`linux`上搭。
 
 ```shell
 The host networking driver only works on Linux hosts, and is not supported on Docker Desktop for Mac, Docker Desktop for Windows, or Docker EE for Windows Server.
@@ -801,6 +802,122 @@ adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e 172.20.110.65:7001@17001 myself,master 
 172.20.110.65:7000> get name
 (error) MOVED 5798 172.20.110.65:7001
 ```
+
+### 结合springboot应用
+
+整体与连接单体的redis没有什么差异，唯一的不同在于yaml配置文件，工程目录结构如下:
+```shell
+demo
+├── HELP.md
+├── demo.iml
+├── mvnw
+├── mvnw.cmd
+├── pom.xml
+└── src
+    ├── main
+    │   ├── java
+    │   │   └── com
+    │   │       └── audi
+    │   │           └── demo
+    │   │               ├── DemoApplication.java
+    │   │               └── redis
+    │   │                   └── cluster
+    │   │                       ├── config
+    │   │                       │   └── RedisClusterConfiguration.java
+    │   │                       └── web
+    │   │                           └── RedisClusterController.java
+    │   └── resources
+    │       └── application.yml
+    └── test
+        └── java
+            └── com
+                └── audi
+                    └── demo
+                        └── DemoApplicationTests.java
+```
+
+集群配置信息：
+```shell
+server:
+  port:
+    1111
+spring:
+  redis:
+    cluster:
+      nodes: 172.20.110.65:7000,172.20.110.65:7001,172.20.110.65:7002,172.20.110.65:7003,172.20.110.65:7004,172.20.110.65:7005
+```
+
+`RedisClusterConfiguration`文件内容如下：
+```java
+@Configuration
+public class RedisClusterConfiguration {
+
+    @Bean
+    public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory redisConnectionfactory) {
+        RedisTemplate<Object, Object> template = new RedisTemplate<>();
+
+        //使用fastjson序列化
+        FastJsonRedisSerializer fastJsonRedisSerializer = new FastJsonRedisSerializer(Object.class);
+        // value值的序列化采用fastJsonRedisSerializer
+        template.setValueSerializer(fastJsonRedisSerializer);
+        template.setHashValueSerializer(fastJsonRedisSerializer);
+        // key的序列化采用StringRedisSerializer
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+
+        template.setConnectionFactory(redisConnectionfactory);
+        return template;
+    }
+}
+```
+
+`RedisClusterController`文件内容如下：
+```java
+/**
+ * redis cluster测试web接口
+ *
+ * @author: WangQuanzhou
+ * @date: 2021-05-25 10:01 PM
+ */
+@Slf4j
+@RestController
+@RequestMapping("redis-cluster")
+public class RedisClusterController {
+
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+
+    @PostMapping("{key}/{value}")
+    public void set(@PathVariable("key") String key,
+                    @PathVariable("value") String value) {
+        log.info("received set redis cluster instruction, key = {}, value = {}", key, value);
+        redisTemplate.opsForValue().set(key, value);
+    }
+
+    @GetMapping("{key}")
+    public String set(@PathVariable("key") String key) {
+        log.info("received get redis cluster instruction, key = {}", key);
+        String value = redisTemplate.opsForValue().get(key);
+        log.info("value = {}", value);
+        return value;
+    }
+}
+```
+
+通过postman发送多次请求「拷贝成curl如下所示」，可以正常写入及读取数据。
+```shell
+curl -X POST \
+  http://127.0.0.1:1111/redis-cluster/wang/baba \
+  -H 'cache-control: no-cache' \
+  -H 'content-type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW' \
+  -H 'postman-token: 3c1f8b16-8492-24d0-fc9c-97e5c38706f0'
+```
+
+![redis-spring](./image/redis/redis_cluster_spring_boot.jpg)
+
+
 ### 集群扩缩容
 
 todo。。。
@@ -838,7 +955,20 @@ Before you can create an overlay network, you need to either initialize your Doc
 
 ### host networking
 
+- https://docs.docker.com/network/host/
 
+`host`网络模式下，docker容器直接使用宿主机的网络和端口，不存在`port mapping`的过程，因此设置端口的相关参数都将不可用
+```shell
+Note: Given that the container does not have its own IP-address when using host mode networking, port-mapping does not take effect, and the -p, --publish, -P, and --publish-all option are ignored, producing a warning instead:
+
+WARNING: Published ports are discarded when using host network mode
+```
+
+需要`host`网络模式只在`linux`上才有效，其他的mac、win都无效。
+
+```shell
+The host networking driver only works on Linux hosts, and is not supported on Docker Desktop for Mac, Docker Desktop for Windows, or Docker EE for Windows Server.
+```
 
 
   [1]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_object.jpeg?raw=true
