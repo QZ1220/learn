@@ -846,6 +846,50 @@ spring:
     cluster:
       nodes: 172.20.110.65:7000,172.20.110.65:7001,172.20.110.65:7002,172.20.110.65:7003,172.20.110.65:7004,172.20.110.65:7005
 ```
+注意，虽然redis集群在编码上与单体的redis没有差异，但是配置这里必须配置成集群形式，如果配置成下面这样，那么程序有可能会报错：
+```shell
+server:
+  port:
+    1111
+spring:
+  redis:
+#    cluster:
+#      nodes: 172.20.110.65:7000,172.20.110.65:7001,172.20.110.65:7002,172.20.110.65:7003,172.20.110.65:7004,172.20.110.65:7005
+    database: 0
+    host: 172.20.110.65
+    port: 7000
+```
+
+报错信息如下，其实也就是因为没有使用集群模式区连接导致的：
+```java
+2021-05-26 19:22:50.312 ERROR 60567 --- [nio-1111-exec-3] o.a.c.c.C.[.[.[/].[dispatcherServlet]    : Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is org.springframework.data.redis.RedisSystemException: Error in execution; nested exception is io.lettuce.core.RedisCommandExecutionException: MOVED 15686 172.20.110.65:7002] with root cause
+
+io.lettuce.core.RedisCommandExecutionException: MOVED 15686 172.20.110.65:7002
+	at io.lettuce.core.internal.ExceptionFactory.createExecutionException(ExceptionFactory.java:137) ~[lettuce-core-6.1.2.RELEASE.jar:6.1.2.RELEASE]
+	at io.lettuce.core.internal.ExceptionFactory.createExecutionException(ExceptionFactory.java:110) ~[lettuce-core-6.1.2.RELEASE.jar:6.1.2.RELEASE]
+	at io.lettuce.core.protocol.AsyncCommand.completeResult(AsyncCommand.java:120) ~[lettuce-core-6.1.2.RELEASE.jar:6.1.2.RELEASE]
+	at io.lettuce.core.protocol.AsyncCommand.complete(AsyncCommand.java:111) ~[lettuce-core-6.1.2.RELEASE.jar:6.1.2.RELEASE]
+	at io.lettuce.core.protocol.CommandHandler.complete(CommandHandler.java:746) ~[lettuce-core-6.1.2.RELEASE.jar:6.1.2.RELEASE]
+	at io.lettuce.core.protocol.CommandHandler.decode(CommandHandler.java:681) ~[lettuce-core-6.1.2.RELEASE.jar:6.1.2.RELEASE]
+	at io.lettuce.core.protocol.CommandHandler.channelRead(CommandHandler.java:598) ~[lettuce-core-6.1.2.RELEASE.jar:6.1.2.RELEASE]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:379) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:365) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:357) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1410) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:379) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:365) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:919) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:719) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:655) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:581) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:493) ~[netty-transport-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:989) ~[netty-common-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74) ~[netty-common-4.1.65.Final.jar:4.1.65.Final]
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30) ~[netty-common-4.1.65.Final.jar:4.1.65.Final]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_201]
+```
+
 
 `RedisClusterConfiguration`文件内容如下：
 ```java
@@ -919,6 +963,14 @@ curl -X POST \
 
 
 ### 集群扩缩容
+
+增加一个master
+resharding
+增加一个slave
+mannual failover
+集群高可用保证（方案）
+集群节点版本升级 
+单节点到集群的扩展
 
 todo。。。
 
