@@ -26,7 +26,7 @@
 git学习
 -----
 
-[git笔记](https://github.com/Audi-A7/learn/blob/master/git%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md)
+[git笔记](https://github.com/AudiVehicle/learn/blob/master/git%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md)
 
 
 数据库学习
