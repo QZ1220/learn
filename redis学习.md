@@ -31,6 +31,7 @@
       * [搭建](#搭建)
       * [结合springboot应用](#结合springboot应用)
       * [集群扩缩容](#集群扩缩容)
+         * [增加一个master](#增加一个master)
 
 
 ## redis数据结构
@@ -960,7 +961,56 @@ curl -X POST \
 
 ### 集群扩缩容
 
-增加一个master
+#### 增加一个master
+
+1、增加新节点的配置文件：
+```shell
+port 7006
+protected-mode no
+cluster-enabled yes
+cluster-config-file nodes.conf
+cluster-node-timeout 5000
+appendonly yes
+cluster-announce-ip 172.20.110.65
+cluster-announce-port 7006
+cluster-announce-bus-port 17006
+```
+
+2、在docker-compose.yml文件中增加如下部分：
+```shell
+  node7:
+    image: redis:6.2.3
+    command: redis-server /etc/redis/redis.conf
+    network_mode: host # host 网络模式
+    volumes:
+      - /root/redis/cluster/7006/data:/data
+      - /root/redis/cluster/7006/conf/redis.conf:/etc/redis/redis.conf
+      - /root/redis/cluster/7006/log:/var/log
+```
+
+使用`docker-compose up -d`启动新建的服务，已有的服务不会受到影响。
+
+服务启动以后，使用如下命令让新起来的`node7`加入集群：
+```shell
+docker exec -it cee7d09e6873 redis-cli -h 172.20.110.65 -p 7000 --cluster add-node 172.20.110.65:7006 172.20.110.65:7000
+```
+启动以后可以使用如下命令查看新集群的状态：
+```shell
+65# redis-cli -c -h  172.20.110.65 -p 7000
+172.20.110.65:7000> cluster nodes
+adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e 172.20.110.65:7001@17001 master - 0 1622250141000 2 connected 5461-10922
+13e1dc0efc1072fe38bf938d15fa39b7b8b46bff 172.20.110.65:7000@17000 myself,master - 0 1622250140000 1 connected 0-5460
+abce1e056522719d1ab215d3ffb4d0a087a857aa 172.20.110.65:7006@17006 master - 0 1622250142000 0 connected
+93f999e6e3ed034a576d457e5a67e392f386eb79 172.20.110.65:7002@17002 master - 0 1622250142517 3 connected 10923-16383
+697ca741233cc451817194f358cff3a71a81ea58 172.20.110.65:7005@17005 slave adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e 0 1622250142000 2 connected
+4323e3894a9173d608d2fd52e1b4d4345aa8cfe4 172.20.110.65:7004@17004 slave 13e1dc0efc1072fe38bf938d15fa39b7b8b46bff 0 1622250141000 1 connected
+4de31af2924778214f9de093a8ad3d08776e7064 172.20.110.65:7003@17003 slave 93f999e6e3ed034a576d457e5a67e392f386eb79 0 1622250142216 3 connected
+```
+
+其中，端口为7006的就是我们新加的节点，注意他此时是无连接的，通过官方文档我们也知道`add-node`这个命令做的事情，仅仅是让集群的其他节点知道这个节点的存在，但是数据并不会落到新节点上，且新的节点不参与的集群的选主投票环节。
+
+
+
 resharding
 增加一个slave
 mannual failover
