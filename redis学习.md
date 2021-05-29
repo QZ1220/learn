@@ -1173,18 +1173,77 @@ S: 697ca741233cc451817194f358cff3a71a81ea58 172.20.110.65:7005
 >>> Check slots coverage...
 [OK] All 16384 slots covered.
 ```
+现在集群有8个节点了，4主4从的结构。
+
+#### mannual failover
+
+`mannual failover`在什么情况下需要呢？比如需要升级集群redis节点的版本的时候。
+
+接下来我们针对，7006节点（master节点）做`mannual failover`,步骤如下:
+
+1、登录7006对应的slave节点
+```shell
+# redis-cli -c -h 172.20.110.65 -p 7007
+172.20.110.65:7007>
+```
+
+2、执行`CLUSTER FAILOVER`命令：
+```shell
+ CLUSTER FAILOVER
+```
+
+执行结果如下：
+![redis_mannual_failover](./image/redis/redis_mannual_failover.jpg)
+
+执行了failover命令以后，7006、7007的主从角色就已经发生了改变。
+
+值得注意的`CLUSTER FAILOVER`后面还可以跟上`FORCE|TAKEOVER`，参见[这里](https://redis.io/commands/cluster-failover)。`FORCE`用在master节点已经无法联通的情况情况下的failover，但是slave成为master的过程需要集群多数以上的master同意。`TAKEOVER`则比`FORCE`更厉害，他具备`FORCE`的所有功能，且成为master不需要集群投票通过（有时候集群挂了，没有那么多可以投票的master了）。
 
 
+#### 集群高可用保证（方案）
 
-mannual failover
-集群高可用保证（方案）
-集群节点版本升级 
-单节点到集群的扩展
+做集群本身就是为了降低数据丢失的可能性，尽量保证能不间断对外提供服务，因此保证集群高可用是一个重点。
 
-todo。。。
+前面我们给每个master节点配置slave节点就是为了这个目的。但是即便配置了slave节点，也无法百分百的保证那一对master-slave就一定是可靠的（虽然master-slave同事挂掉的可能性很小），为此reids官方文档介绍了一种方案，大致思想如下：
+
+```java
+1、为每个master节点配置从节点
+2、为其中某个master A配置多个slave节点（需要保证它的slave的个数是最多的）
+3、当集群中，某个master B没有slave的时候，自动master A的slave分一个给B
+```
+
+开启这个属性是通过`redis.conf`配置来的，`cluster-migration-barrier`参数表示每个master节点最少要有几个slave节点。
+```shell
+# Cluster replicas are able to migrate to orphaned masters, that are masters
+# that are left without working replicas. This improves the cluster ability
+# to resist to failures as otherwise an orphaned master can't be failed over
+# in case of failure if it has no working replicas.
+#
+# Replicas migrate to orphaned masters only if there are still at least a
+# given number of other working replicas for their old master. This number
+# is the "migration barrier". A migration barrier of 1 means that a replica
+# will migrate only if there is at least 1 other working replica for its master
+# and so forth. It usually reflects the number of replicas you want for every
+# master in your cluster.
+#
+# Default is 1 (replicas migrate only if their masters remain with at least
+# one replica). To disable migration just set it to a very large value.
+# A value of 0 can be set but is useful only for debugging and dangerous
+# in production.
+#
+# cluster-migration-barrier 1
+```
 
 
+#### 集群节点版本升级 
 
+升级slave节点很简单，直接stop，然后升级。
+
+升级amster稍微复杂一点：
+- 借助mannul failover使其成为slave节点
+- 升级这个slave节点
+
+如果需要原来的master在升级后还是master，再次进行failover的过程即可。
 
 
 
