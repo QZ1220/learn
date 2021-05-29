@@ -572,7 +572,7 @@ So 16k was in the right range to ensure enough slots per master with a max of 10
 
 关于官方对于一致性的解释可以参看[这里](https://redis.io/topics/cluster-tutorial)的「Redis Cluster consistency guarantees」。
 
-redis集群本身并不是强一致性的。由于主从复制是异步的，如果主从复制时，主crash，从成为新的master，那么将面临数据的丢失的可能。此外在网络的情况下，有可能出现数据不一致的情况。
+redis集群本身并不是强一致性的。由于主从复制是异步的，如果主从复制时，主crash，从成为新的master，那么将面临数据的丢失的可能。此外在网络分区出现的情况下，有可能出现数据不一致的情况。
 
 ## redis集群搭建
 
@@ -990,7 +990,7 @@ cluster-announce-bus-port 17006
 
 使用`docker-compose up -d`启动新建的服务，已有的服务不会受到影响。
 
-服务启动以后，使用如下命令让新起来的`node7`加入集群：
+3、服务启动以后，使用如下命令让新起来的`node7`加入集群：
 ```shell
 docker exec -it cee7d09e6873 redis-cli -h 172.20.110.65 -p 7000 --cluster add-node 172.20.110.65:7006 172.20.110.65:7000
 ```
@@ -1009,10 +1009,173 @@ abce1e056522719d1ab215d3ffb4d0a087a857aa 172.20.110.65:7006@17006 master - 0 162
 
 其中，端口为7006的就是我们新加的节点，注意他此时是无连接的，通过官方文档我们也知道`add-node`这个命令做的事情，仅仅是让集群的其他节点知道这个节点的存在，但是数据并不会落到新节点上，且新的节点不参与的集群的选主投票环节。
 
+#### 集群的resharding
+
+在resharding的时候，我们先借助上面的`springboot`程序批量写入一些数据，示例代码如下：
+```java
+    @PostMapping
+    public void batchGenerateData() {
+        log.info("received batchGenerateData redis cluster instruction");
+        for (int i = 1; i < 10000; i++) {
+            String key = i + "_" + "key";
+            String value = i + "_" + "value";
+            redisTemplate.opsForValue().set(key, value);
+        }
+    }
+```
+代码运行以后，查看集群key数量，基本每对master-slave节点都在3330左右。
+
+![keyspace](./image/redis/keyspace.jpg)
+
+在reshard开始前，可以先查看一下集群的状态是否正常；
+```shell
+# docker exec -it cee7d09e6873 redis-cli -h 172.20.110.65 -p 7000 --cluster check 172.20.110.65:7001
+172.20.110.65:7001 (adf8cfbb...) -> 3330 keys | 5462 slots | 1 slaves.
+172.20.110.65:7006 (abce1e05...) -> 0 keys | 0 slots | 0 slaves.
+172.20.110.65:7002 (93f999e6...) -> 3375 keys | 5461 slots | 1 slaves.
+172.20.110.65:7000 (13e1dc0e...) -> 3299 keys | 5461 slots | 1 slaves.
+[OK] 10004 keys in 4 masters.
+0.61 keys per slot on average.
+>>> Performing Cluster Check (using node 172.20.110.65:7001)
+M: adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e 172.20.110.65:7001
+   slots:[5461-10922] (5462 slots) master
+   1 additional replica(s)
+M: abce1e056522719d1ab215d3ffb4d0a087a857aa 172.20.110.65:7006
+   slots: (0 slots) master
+S: 4de31af2924778214f9de093a8ad3d08776e7064 172.20.110.65:7003
+   slots: (0 slots) slave
+   replicates 93f999e6e3ed034a576d457e5a67e392f386eb79
+S: 4323e3894a9173d608d2fd52e1b4d4345aa8cfe4 172.20.110.65:7004
+   slots: (0 slots) slave
+   replicates 13e1dc0efc1072fe38bf938d15fa39b7b8b46bff
+M: 93f999e6e3ed034a576d457e5a67e392f386eb79 172.20.110.65:7002
+   slots:[10923-16383] (5461 slots) master
+   1 additional replica(s)
+M: 13e1dc0efc1072fe38bf938d15fa39b7b8b46bff 172.20.110.65:7000
+   slots:[0-5460] (5461 slots) master
+   1 additional replica(s)
+S: 697ca741233cc451817194f358cff3a71a81ea58 172.20.110.65:7005
+   slots: (0 slots) slave
+   replicates adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+```
+这里我之所以要使用`docker exec`命令，是因为`linux本机`的`redis-cli`是`2.x`版本的，很多新特性命令不支持。
+
+原本有三个master节点，每个master节点有大约5400（16384/3）个slot，为了均衡考虑，我们可以每个节点移动大约1400个slot到新节点上，每个节点约`4096`个slot。
+
+`resharding`可以是交互式的，也可以脚本直接执行，我这里直接使用脚本：
+```shell
+# redis-cli --cluster reshard <host>:<port> --cluster-from <node-id> --cluster-to <node-id> --cluster-slots <number of slots> --cluster-yes
+
+# 注意这里的<number of slots>参数，它的意思不是从其他节点每个移动多少个slot到新节点，而是新节点总共需要容纳多少个slot
+
+docker exec -it cee7d09e6873 redis-cli -h 172.20.110.65 -p 7000 --cluster reshard 172.20.110.65:7000 --cluster-from all --cluster-to abce1e056522719d1ab215d3ffb4d0a087a857aa --cluster-slots 4096 --cluster-yes
+```
+执行完命令以后，再次查看集群状态：
+```java
+# docker exec -it cee7d09e6873 redis-cli -h 172.20.110.65 -p 7000 --cluster check 172.20.110.65:7001
+172.20.110.65:7001 (adf8cfbb...) -> 2186 keys | 3630 slots | 1 slaves.
+172.20.110.65:7006 (abce1e05...) -> 3350 keys | 5495 slots | 0 slaves.
+172.20.110.65:7002 (93f999e6...) -> 2267 keys | 3630 slots | 1 slaves.
+172.20.110.65:7000 (13e1dc0e...) -> 2201 keys | 3629 slots | 1 slaves.
+[OK] 10004 keys in 4 masters.
+0.61 keys per slot on average.
+>>> Performing Cluster Check (using node 172.20.110.65:7001)
+M: adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e 172.20.110.65:7001
+   slots:[7293-10922] (3630 slots) master
+   1 additional replica(s)
+M: abce1e056522719d1ab215d3ffb4d0a087a857aa 172.20.110.65:7006
+   slots:[0-1831],[5461-7292],[10923-12753] (5495 slots) master
+S: 4de31af2924778214f9de093a8ad3d08776e7064 172.20.110.65:7003
+   slots: (0 slots) slave
+   replicates 93f999e6e3ed034a576d457e5a67e392f386eb79
+S: 4323e3894a9173d608d2fd52e1b4d4345aa8cfe4 172.20.110.65:7004
+   slots: (0 slots) slave
+   replicates 13e1dc0efc1072fe38bf938d15fa39b7b8b46bff
+M: 93f999e6e3ed034a576d457e5a67e392f386eb79 172.20.110.65:7002
+   slots:[12754-16383] (3630 slots) master
+   1 additional replica(s)
+M: 13e1dc0efc1072fe38bf938d15fa39b7b8b46bff 172.20.110.65:7000
+   slots:[1832-5460] (3629 slots) master
+   1 additional replica(s)
+S: 697ca741233cc451817194f358cff3a71a81ea58 172.20.110.65:7005
+   slots: (0 slots) slave
+   replicates adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+```
+
+我这里，之所以7006节点（新节点）的数据要多于其他节点，是因为我执行了`reshard`两次，一次`number of slots=1400`，一次`number of slots=4096`，一开始的时候我理解错了`number of slots`的意义，囧。。。
+
+现在集群有7个节点了，4主3从，我们接下来再给新的master节点加一个slave节点。
+
+#### 增加一个slave
+
+添加一个slave有两种方式：
+1、和上面一样，增加一个空的master节点，然后进入该节点执行类似下面的命令即可：
+```shell
+# 3c3a0c74aae0b56170ccb03a76b60cfe7dc1912e 是这个slave希望依附的mater节点
+redis 127.0.0.1:7006> cluster replicate 3c3a0c74aae0b56170ccb03a76b60cfe7dc1912e
+```
+2、直接使用下面的命令假如节点，节点假如进来就是slave，且可以直接指定master节点的id：
+```shell
+redis-cli --cluster add-node 127.0.0.1:7006 127.0.0.1:7000 --cluster-slave --cluster-master-id 3c3a0c74aae0b56170ccb03a76b60cfe7dc1912e
+```
+
+和上面一样，首先要增加conf，修改docker-compose文件，然后重新刷新集群服务，略过。
+
+使用如下命令，加入slave节点：
+```shell
+docker exec -it cee7d09e6873 redis-cli -h 172.20.110.65 -p 7000  --cluster add-node 172.20.110.65:7007 172.20.110.65:7000 --cluster-slave --cluster-master-id abce1e056522719d1ab215d3ffb4d0a087a857aa
+```
+
+此时查看集群状态， all good：
+```shell
+# docker exec -it cee7d09e6873 redis-cli -h 172.20.110.65 -p 7000 --cluster check 172.20.110.65:7001
+172.20.110.65:7001 (adf8cfbb...) -> 2186 keys | 3630 slots | 1 slaves.
+172.20.110.65:7006 (abce1e05...) -> 3350 keys | 5495 slots | 1 slaves.
+172.20.110.65:7002 (93f999e6...) -> 2267 keys | 3630 slots | 1 slaves.
+172.20.110.65:7000 (13e1dc0e...) -> 2201 keys | 3629 slots | 1 slaves.
+[OK] 10004 keys in 4 masters.
+0.61 keys per slot on average.
+>>> Performing Cluster Check (using node 172.20.110.65:7001)
+M: adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e 172.20.110.65:7001
+   slots:[7293-10922] (3630 slots) master
+   1 additional replica(s)
+S: 56db07c7353cfd19499c5cf558921ef35ed46a9e 172.20.110.65:7007
+   slots: (0 slots) slave
+   replicates abce1e056522719d1ab215d3ffb4d0a087a857aa
+M: abce1e056522719d1ab215d3ffb4d0a087a857aa 172.20.110.65:7006
+   slots:[0-1831],[5461-7292],[10923-12753] (5495 slots) master
+   1 additional replica(s)
+S: 4de31af2924778214f9de093a8ad3d08776e7064 172.20.110.65:7003
+   slots: (0 slots) slave
+   replicates 93f999e6e3ed034a576d457e5a67e392f386eb79
+S: 4323e3894a9173d608d2fd52e1b4d4345aa8cfe4 172.20.110.65:7004
+   slots: (0 slots) slave
+   replicates 13e1dc0efc1072fe38bf938d15fa39b7b8b46bff
+M: 93f999e6e3ed034a576d457e5a67e392f386eb79 172.20.110.65:7002
+   slots:[12754-16383] (3630 slots) master
+   1 additional replica(s)
+M: 13e1dc0efc1072fe38bf938d15fa39b7b8b46bff 172.20.110.65:7000
+   slots:[1832-5460] (3629 slots) master
+   1 additional replica(s)
+S: 697ca741233cc451817194f358cff3a71a81ea58 172.20.110.65:7005
+   slots: (0 slots) slave
+   replicates adf8cfbb65f1c9b5fa7b099993d14ea0d7a6eb2e
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+```
 
 
-resharding
-增加一个slave
+
 mannual failover
 集群高可用保证（方案）
 集群节点版本升级 
