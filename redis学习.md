@@ -32,6 +32,11 @@
       * [结合springboot应用](#结合springboot应用)
       * [集群扩缩容](#集群扩缩容)
          * [增加一个master](#增加一个master)
+         * [集群的resharding](#集群的resharding)
+         * [增加一个slave](#增加一个slave)
+         * [mannual failover](#mannual-failover)
+         * [集群高可用保证（方案）](#集群高可用保证方案)
+         * [集群节点版本升级](#集群节点版本升级)
 
 
 ## redis数据结构
