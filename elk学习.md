@@ -4,9 +4,19 @@
 
 ---
 
-参考链接：https://www.ibm.com/developerworks/cn/opensource/os-cn-elk-filebeat/
+* [elk学习](#elk学习)
+   * [搭建elk](#搭建elk)
+      * [解压启动elasticsearch](#解压启动elasticsearch)
+      * [解压启动logstash-5.6.3](#解压启动logstash-563)
+      * [最后，启动kibana服务](#最后启动kibana服务)
+   * [Elasticsearch原理学习](#elasticsearch原理学习)
+   * [es性能优化](#es性能优化)
+   * [kibana日志监控组件sentinl安装及使用](#kibana日志监控组件sentinl安装及使用)
 
-https://www.jianshu.com/p/0962fb50ecff
+## 搭建elk
+
+- https://www.ibm.com/developerworks/cn/opensource/os-cn-elk-filebeat/
+- https://www.jianshu.com/p/0962fb50ecff
 
 我们本次的目的是搭建一个单机版的elk日志收集分析可视化组建。如下图所示：
 ![此处输入图片的描述][1]
@@ -21,8 +31,7 @@ logstash-5.6.3.tar.gz
 
 整体来说还是比较简单的，基本都是解压以后，直接启动就可以了。
 
-解压启动elasticsearch
------------------
+### 解压启动elasticsearch
 
 ```linux
 tar -zxvf elasticsearch-5.6.4.tar.gz
@@ -32,8 +41,7 @@ tar -zxvf elasticsearch-5.6.4.tar.gz
 
 ![此处输入图片的描述][2]
 
-解压启动logstash-5.6.3
-------------------
+### 解压启动logstash-5.6.3
 ```linux
 cd logstash-5.6.3/config/
 vim logstash.conf
@@ -62,8 +70,7 @@ output {
 启动完成以后，logstash会去配置里指定的目录下收集所有的日志，如下图所示：
 ![此处输入图片的描述][3]
 
-最后，启动kibana服务
--------------
+### 最后，启动kibana服务
 ```linux
 tar -zxvf kibana-5.2.0-darwin-x86_64.tar.gz
 
@@ -77,8 +84,7 @@ tar -zxvf kibana-5.2.0-darwin-x86_64.tar.gz
 然后就可以查看日志了：
 ![此处输入图片的描述][6]
 
-Elasticsearch原理学习
------------------
+## Elasticsearch原理学习
 
 参考链接：
 
@@ -158,15 +164,13 @@ Elasticsearch 支持同一个主机启动多个节点，Ping 的 Response 会包
 
 
 
-es性能优化
-------
+## es性能优化
 
  - https://cloud.tencent.com/developer/article/1156231
 
 这篇文章比较详细的介绍了es的调优策略。
 
-kibana日志监控组件sentinl安装及使用
-========================
+## kibana日志监控组件sentinl安装及使用
 
 1、下载与kibana版本一致的sentinl安装包，我这里下载的是sentinl-v6.3.0.zip
 ，下载地址https://github.com/lmangani/sentinl/releases
