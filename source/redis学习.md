@@ -1253,15 +1253,15 @@ S: 697ca741233cc451817194f358cff3a71a81ea58 172.20.110.65:7005
 
 
 
-  [1]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_object.jpeg?raw=true
-  [2]: https://github.com/Audi-A7/learn/blob/master/image/redis/sds.jpeg?raw=true
-  [3]: https://github.com/Audi-A7/learn/blob/master/image/redis/list.jpeg?raw=true
-  [4]: https://github.com/Audi-A7/learn/blob/master/image/redis/ziplist.jpeg?raw=true
-  [5]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_list.jpeg?raw=true
-  [6]: https://github.com/Audi-A7/learn/blob/master/image/redis/jump_table.png?raw=true
-  [7]: https://github.com/Audi-A7/learn/blob/master/image/redis/redis_jump_table.png?raw=true
-  [8]: https://github.com/Audi-A7/learn/blob/master/image/redis/zskiplistNode.png?raw=true
-  [9]: https://github.com/Audi-A7/learn/blob/master/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
-  [10]: https://github.com/Audi-A7/learn/blob/master/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
+  [1]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/redis_object.jpeg?raw=true
+  [2]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/sds.jpeg?raw=true
+  [3]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/list.jpeg?raw=true
+  [4]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/ziplist.jpeg?raw=true
+  [5]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/redis_list.jpeg?raw=true
+  [6]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/jump_table.png?raw=true
+  [7]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/redis_jump_table.png?raw=true
+  [8]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/zskiplistNode.png?raw=true
+  [9]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
+  [10]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
   [11]: https://github.com/Audi-A7/learn/blob/master/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md
-  [12]: https://github.com/Audi-A7/learn/blob/master/image/redis/gossip.jpg?raw=true
+  [12]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/gossip.jpg?raw=true

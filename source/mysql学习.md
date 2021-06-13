@@ -810,24 +810,24 @@ mysql每次在操作数据的时候，会将更新前的数据存入undo log中�
  
 
 
-  [1]: https://github.com/WQZ321123/learn/blob/master/image/mysql/master-slave.jpg?raw=true
-  [2]: https://github.com/WQZ321123/learn/blob/master/image/mysql/20190730235016.jpg?raw=true
-  [3]: https://github.com/WQZ321123/learn/blob/master/image/mysql/GTID.png?raw=true
-  [4]: https://github.com/Audi-A7/learn/blob/master/image/mysql/rpl_semi.png?raw=true
-  [5]: https://github.com/Audi-A7/learn/blob/master/image/mysql/block.jpeg?raw=true
-  [6]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
-  [7]: https://github.com/Audi-A7/learn/blob/master/image/mysql/master-slave.png?raw=true
-  [8]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223224321.png?raw=true
+  [1]: https://github.com/WQZ321123/learn/blob/master/source/image/mysql/master-slave.jpg?raw=true
+  [2]: https://github.com/WQZ321123/learn/blob/master/source/image/mysql/20190730235016.jpg?raw=true
+  [3]: https://github.com/WQZ321123/learn/blob/master/source/image/mysql/GTID.png?raw=true
+  [4]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/rpl_semi.png?raw=true
+  [5]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/block.jpeg?raw=true
+  [6]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
+  [7]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/master-slave.png?raw=true
+  [8]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223224321.png?raw=true
   [9]: https://github.com/Audi-A7/learn/blob/master/%E7%AC%94%E8%AE%B0%E6%95%B4%E7%90%86.md#hash%E7%B4%A2%E5%BC%95%E5%92%8Cbtree%E7%B4%A2%E5%BC%95%E5%92%8C%E4%BD%8D%E5%9B%BE%E7%B4%A2%E5%BC%95
-  [10]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223230719.png?raw=true
-  [11]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232559.png?raw=true
-  [12]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232425.png?raw=true
-  [13]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232157.png?raw=true
-  [14]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231309.png?raw=true
-  [15]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231621.png?raw=true
-  [16]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
-  [17]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191224213914.png?raw=true
+  [10]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223230719.png?raw=true
+  [11]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232559.png?raw=true
+  [12]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232425.png?raw=true
+  [13]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223232157.png?raw=true
+  [14]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231309.png?raw=true
+  [15]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231621.png?raw=true
+  [16]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191223231254.png?raw=true
+  [17]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191224213914.png?raw=true
   [18]: https://github.com/Audi-A7/learn/blob/master/2019%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md#mysql%E9%97%B4%E6%AD%87%E9%94%81
-  [19]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228213155.png?raw=true
-  [20]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228214243.png?raw=true
-  [21]: https://github.com/Audi-A7/learn/blob/master/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228214301.png?raw=true
+  [19]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228213155.png?raw=true
+  [20]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228214243.png?raw=true
+  [21]: https://github.com/Audi-A7/learn/blob/master/source/image/mysql/QQ%E6%88%AA%E5%9B%BE20191228214301.png?raw=true
