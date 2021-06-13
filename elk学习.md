@@ -5,15 +5,20 @@
 ---
 
 * [elk学习](#elk学习)
-   * [搭建elk](#搭建elk)
+   * [elk搭建](#elk搭建)
       * [解压启动elasticsearch](#解压启动elasticsearch)
       * [解压启动logstash-5.6.3](#解压启动logstash-563)
       * [最后，启动kibana服务](#最后启动kibana服务)
-   * [Elasticsearch原理学习](#elasticsearch原理学习)
+   * [elk搭建优化](#elk搭建优化)
+      * [es配置](#es配置)
+      * [kibana配置](#kibana配置)
+      * [logstash配置](#logstash配置)
+      * [filebeat配置](#filebeat配置)
+   * [Elasticsearch原理](#elasticsearch原理)
    * [es性能优化](#es性能优化)
    * [kibana日志监控组件sentinl安装及使用](#kibana日志监控组件sentinl安装及使用)
 
-## 搭建elk
+## elk搭建
 
 - https://www.ibm.com/developerworks/cn/opensource/os-cn-elk-filebeat/
 - https://www.jianshu.com/p/0962fb50ecff
@@ -84,7 +89,186 @@ tar -zxvf kibana-5.2.0-darwin-x86_64.tar.gz
 然后就可以查看日志了：
 ![此处输入图片的描述][6]
 
-## Elasticsearch原理学习
+## elk搭建优化
+
+- https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-overview.html#filebeat-overview
+- https://souravatta.medium.com/monitor-jenkins-build-logs-using-elk-stack-697e13b78cb1
+
+距离上一次写elk相关的内容已经有一段事件了，这次刚好需要再一次搭建一套elk系统，这次的目标是使用elk收集多台机器（有windows，有macos）上的jenkins job build日志。如下图所示：
+![Architecture Diagram](./image/2021/new_elk.png)
+
+这里介绍一下elk系统里filebeats和logstash的关系，二者的差异网上有很多[文章](https://www.zhihu.com/question/54058964)。其实，简答来说就是由于logstash对机器资源占用较多，不太经济，从而官方出了个新产品叫filebeats，他不是用来替代logstash的，而是为了更好的完善elk家族而出现的。
+
+此次搭建选用的版本是`7.13.1`。
+
+### es配置
+
+由于es默认是集群模式，因此我们配置的时候需要配置如下信息（一个只有一个节点的集群）：
+```yaml
+node.name: node-1
+
+# ---------------------------------- Network -----------------------------------
+#
+# By default Elasticsearch is only accessible on localhost. Set a different
+# address here to expose this node on the network:
+#
+network.host: 0.0.0.0
+
+cluster.initial_master_nodes: ["node-1"]
+```
+
+然后直接`./elasticsearch-7.13.1/bin/elasticsearch`启动，如果要后台启动的话，可以加`&`符号。
+
+### kibana配置
+然后启动kibana，修改配置文件为如下格式：
+```yaml
+# Specifies the address to which the Kibana server will bind. IP addresses and host names are both valid values.
+# The default is 'localhost', which usually means remote machines will not be able to connect.
+# To allow connections from remote users, set this parameter to a non-loopback address.
+server.host: "your host ip"
+
+
+# The URLs of the Elasticsearch instances to use for all your queries.
+elasticsearch.hosts: ["http://your host ip:9200/"]
+```
+
+使用`./kibana-7.13.1-darwin-x86_64/bin/kibana`启动kibana服务。
+
+### logstash配置
+然后是logstash服务，修改`logstash-sample.conf`为如下格式：
+```yaml
+# Sample Logstash configuration for creating a simple
+# Beats -> Logstash -> Elasticsearch pipeline.
+
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+    # 由于我所有的日志都使用同样的规则解析，因此这里指定`type`为任意
+  if [type] =~ ".*" {
+# set all messages from the jenkins log as type 'jenkins' and add the @message field.
+          mutate {
+              add_field => ["@message_type", "jenkins"]
+              add_field => ["@message", "%{message}"]
+          }
+}
+  }
+# now that we have possibly-multiline events, we can clean them up.
+  filter {
+# munge the possibly-multiline messages into a single string
+      mutate {
+          join => ["@message", "\n"]
+      }
+# split @message into __date and __msg, and overwrite the @timestamp value.
+      grok {
+          match => [ "@message", "^(?<__date>%{MONTH} %{MONTHDAY}, %{YEAR} %{TIME} (AM|PM)) (?<__msg>.+)" ]
+      }
+      date {
+          match  => [ "__date", "YYYY-MMM-dd  HH:mm:ss a"]
+      }
+# ...now some patterns to categorize specific event types...
+# parse build completion messages, adding the jenkins_* fields and the 'build' tag
+      grok {
+          match => [ "@message", "(?<jenkins_job>\S+) #(?<jenkins_build_number>\d+) (?<__msg>.+): (?<jenkins_build_status>\w+)" ]
+          tag_on_failure => []
+          overwrite => true
+          add_tag => ['build']
+      }
+
+   # convert build number from string to integer
+   mutate {
+                convert => ["jenkins_build_number", "integer"]
+                }
+# tag messages that come from the perforce SCM plugin (and associated classes)
+      grok {
+          match => [ "@message", "\.perforce\."]
+          tag_on_failure => []
+          add_tag => ['p4-plugin']
+      }
+# if we have extracted a short message string, replace @message with it now
+      if [__msg] {
+          mutate {
+              replace => ["@message","%{__msg}"]
+          }
+      }
+# convert @message back into an array of lines
+      mutate {
+          split => ["@message", "\n"]
+      }
+  }
+# clean-up temporary fields and unwanted tags.
+  filter {
+      mutate {
+          remove_field => [
+              "message",
+              "__msg",
+              "__date",
+              "dumps1",
+              "plugin_command"
+          ]
+          remove_tag => [
+              "multiline",
+              "_grokparsefailure"
+          ]
+      }
+  }
+
+output {
+  elasticsearch {
+    hosts => ["http://host ip:9200"]
+    action => "index"
+    index => "%{type}-%{+YYYY.MM.dd}"
+    #user => "elastic"
+    #password => "changeme"
+  }
+}
+```
+
+使用`./logstash-7.13.1/bin/logstash -f ./logstash-7.13.1/config/logstash-sample.conf`命令启动logstash。
+
+### filebeat配置
+最后在各个需要收集日志的节点启动`filebeats`,这里需要配置`filebeat.yml`文件(主要配置`Filebeat inputs`里的内容)，如下所示:
+```yaml
+# ============================== Filebeat inputs ===============================
+
+## 输入可以有多个
+filebeat.inputs:
+
+# Each - is an input. Most options can be set at the input level, so
+# you can use different inputs for various configurations.
+# Below are the input specific configurations.
+
+- type: log
+
+  # Change to true to enable this input configuration.
+  enabled: true
+
+  # Paths that should be crawled and fetched. Glob based paths.
+  paths:
+    - /Users/wangquanzhou/.jenkins/jobs/n34/builds/*/log
+    #- c:\programdata\elasticsearch\logs\*
+    # multiline.pattern: '^[a-zA-Z]+\s[0-9]{1,2},\s[0-9]{4}\s[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}\s(?:AM|am|PM|pm)'
+    # 匹配不是空格开头的行
+  multiline.pattern: '^[^\s].*'
+  multiline.negate: true
+  multiline.match: after
+  exclude_lines: '^(\t)*$\n'
+  fields:
+    # 这里的type和logstash里检测的tyepe是对应的
+    type: mac-n34-xcode-build
+```
+
+使用`./filebeat-7.13.1-darwin-x86_64/filebeat -c ./filebeat-7.13.1-darwin-x86_64/filebeat.yml`启动。
+
+最后在kibana上配置相应的index即可，这里不多赘述。
+
+
+
+
+## Elasticsearch原理
 
 参考链接：
 
