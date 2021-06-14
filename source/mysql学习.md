@@ -4,9 +4,32 @@
 
 ---
 
-环境信息
-----
+* [mysql学习](#mysql学习)
+   * [主从集群搭建](#主从集群搭建)
+      * [环境信息](#环境信息)
+   * [mysql主从复制的两种方式](#mysql主从复制的两种方式)
+   * [两种主从模式的对比](#两种主从模式的对比)
+   * [半同步复制](#半同步复制)
+   * [mysql事务](#mysql事务)
+   * [mysql性能指标监控及死锁检测](#mysql性能指标监控及死锁检测)
+   * [数据库设计注意事项](#数据库设计注意事项)
+   * [mysql索引结构](#mysql索引结构)
+   * [mysql复合索引最左匹配原则及原因](#mysql复合索引最左匹配原则及原因)
+   * [mysql count(id)可能不走主键索引](#mysql-countid可能不走主键索引)
+   * [mysql慢查询](#mysql慢查询)
+   * [mysql read repeatable级别如何防止幻读](#mysql-read-repeatable级别如何防止幻读)
+   * [分区表](#分区表)
+      * [是否支持分区表属性](#是否支持分区表属性)
+      * [分区类型](#分区类型)
+         * [RANGE partitioning](#range-partitioning)
+         * [LIST partitioning](#list-partitioning)
+         * [HASH partitioning](#hash-partitioning)
+         * [KEY partitioning](#key-partitioning)
+   * [count操作会不会锁表](#count操作会不会锁表)
 
+## 主从集群搭建
+
+### 环境信息
 虚拟机：VMware Fusion8
 
 linux：ubuntu 16.04
@@ -15,28 +38,23 @@ docker：18.09.2
 
 mysql：5.7
 
-参考链接
-----
-https://www.jianshu.com/p/ab20e835a73f
+- https://www.jianshu.com/p/ab20e835a73f
 
 为了方便，使用docker新建mysql服务器，构建一主一从的基于**日志点**mysql集群，集群架构图如下，网上搜的：
 ![此处输入图片的描述][1]
 
-1、安装docker-ce
-
-2、拉取mysql5.7镜像
-
-3、启动mysql  master  注意端口是3307
+* 安装docker-ce
+* 拉取mysql5.7镜像
+* 启动mysql  master  注意端口是3307
 ```linux
 docker run --name mysql -p 3307:3306 -eMYSQL_ROOT_PASSWORD=root -d mysql:5.7
 ```
-
-4、启动mysql  slave  注意端口是3308
+* 启动mysql  slave  注意端口是3308
 ```linux
 docker run --name mysql-slave -p 3308:3306 -eMYSQL_ROOT_PASSWORD=root -d mysql:5.7
 ```
 
-5、进入mysql master所在的容器，设置相关参数
+* 进入mysql master所在的容器，设置相关参数
 
 ![此处输入图片的描述][2]
 
@@ -61,7 +79,7 @@ binlog_format=mixed
 expire_logs_days=7
 slave_skip_errors=1062
 ```
-重启mysql服务器：
+* 重启mysql服务器：
 ```linux
 service mysql restart
 ```
@@ -76,7 +94,7 @@ CREATE USER 'slave'@'%' IDENTIFIED BY '123456';
 GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'slave'@'%';  
 ```
 
-6、同样的，mysql slave也需要进行配置，同样的目录下的my.cnf文件：
+* 同样的，mysql slave也需要进行配置，同样的目录下的my.cnf文件：
 ```linux
 [mysqld]
 
@@ -101,7 +119,7 @@ log_slave_updates=1
 
 read_only=1
 ```
-7、连接master和slave
+* 连接master和slave
 
 登录master服务器，执行show master status;结果如下：
 ```mysql
@@ -123,13 +141,12 @@ change master to master_host='192.168.199.219', master_user='slave', master_pass
 start slave;
 ```
 
-mysql主从复制的两种方式
---------------
+## mysql主从复制的两种方式
 MySQL可以通过两种方式配置主从复制，一种是通过二进制日志（binary log）的方式；另一种是通过GTID（全局事务ID）方式。
 
 上面我们完成的主从复制，其实就是基于bin-log日志的。下面我们再来看一下基于GTID的主从复制方式。
 
-参考链接：https://www.jianshu.com/p/63efedc95822
+- https://www.jianshu.com/p/63efedc95822
 
 其实配置和上面的基于日志的类似，首先是使用docker新建两个mysql数据库。
 
@@ -239,11 +256,10 @@ Master_SSL_Verify_Server_Cert: No
 ```
 注意起止的Retrieved_Gtid_Set和Executed_Gtid_Set。
 
-可以再主mysql创建一个db或者插入一些数据进行测试。
+可以在主mysql创建一个db或者插入一些数据进行测试。
 
 
-两种主从模式的对比
----------
+## 两种主从模式的对比
 
  - 基于日志点的复制
 它出现的比较早，是mysql主从复制较早使用的一种方式。从库数据同步依赖于binlog日志master_log_file以及日志的偏移量master_log_pos。但是随着master数据量的增加，binlog日志和偏移量也在不断变化，此时如果出现slave宕机或者需要新加一个slave，如何准确的指定master_log_file和master_log_pos的值不是那么的容易。该方式兼容性较好，如老版本mysql及MariaDB。支持MMM和MHA高可用架构。可以方便的跳过错误。
@@ -254,8 +270,7 @@ Master_SSL_Verify_Server_Cert: No
 
 ![此处输入图片的描述][3]
 
-半同步复制
------
+## 半同步复制
 mysql的半同步复制，主要是为了解决主从复制延时比较高的问题（除开网络原因，一般大事务也可能造成主从复制延长较大）。
 
 mysql5.7以后引入了半同步复制的技术，可以有效减少主从复制的延迟。
@@ -320,8 +335,7 @@ mysql> show global status like 'rpl%';
 ![此处输入图片的描述][4]
 上面的语句花了500ms才执行成功，因为超时时间设置的是500ms。
 
-mysql事务
--------
+## mysql事务
 
 基础准备：
 
@@ -364,8 +378,7 @@ mysql> show variables like 'tx_isolation';
   
   
 
-mysql性能指标监控及死锁检测
-----------------
+## mysql性能指标监控及死锁检测
 
 **性能类指标**
 | 名称        | 说明   | 
@@ -738,19 +751,14 @@ mysql>
 
 
 
-数据库设计注意事项
----------
+## 数据库设计注意事项
 如果需要设计一个关系型数据库，那么一般需要考虑：架构、索引、锁、语法、理论范式等方面。具体一点如下图所示：
 
 ![此处输入图片的描述][8]
 
 其中，索引管理、锁设计是重点部分，也是一般面试关注的比较多的地方。
 
- 
- 
-
-mysql索引结构
----------
+## mysql索引结构
 关于索引的结构，之前以及有过[笔记][9]，这里只是补充一点，关于innodb 副索引与主索引的关系。
 
 之前关于主索引的查询步骤还是比较清晰的，但是对于副索引如何查询还是有点疑惑，下面这张图很好的解释了查询的过程，其实副索引也是一个B+-tree的结构，只不过他的叶子节点不再存储数据，而是存储主键索引的值。
@@ -759,8 +767,7 @@ mysql索引结构
 
 ![此处输入图片的描述][10]
 
-mysql复合索引最左匹配原则及原因
-------------------
+## mysql复合索引最左匹配原则及原因
 最左匹配原则，可以查看下图，当然这只是针对复合索引而言：
 
 ![此处输入图片的描述][11]
@@ -769,16 +776,16 @@ mysql复合索引最左匹配原则及原因
  
  
 
-mysql count(id)可能不走主键索引
------------------------
+## mysql count(id)可能不走主键索引
 count时不走主键索引，很好理解，mysql可能会自己进行优化，因为主键索引是索引+数据的存储模式，而副索引仅仅存储主键索引的值，从读取IO来说，肯定是数据量越少读取的越快。并且，副索引和主索引都是B+-tree的结构，都可以在叶子节点进行横向扫描。
 ![此处输入图片的描述][13]
 
+这次[实际工作](https://github.com/AudiVehicle/learn/blob/master/source/%E5%B7%A5%E4%BD%9C%E6%80%BB%E7%BB%93.md#%E8%AE%B0%E4%B8%80%E6%AC%A1%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BC%98%E5%8C%96%E7%BB%8F%E5%8E%86)中就遇到这种情况了。
+
  
  
 
-mysql慢查询
---------
+## mysql慢查询
 一般定位和处理慢查询可以按照下图的步骤进行处理：
 
 ![此处输入图片的描述][14]
@@ -788,8 +795,7 @@ mysql慢查询
 
 ![此处输入图片的描述][16]
 
-mysql read repeatable级别如何防止幻读
------------------------------
+## mysql read repeatable级别如何防止幻读
 mysql在RR级别下防止幻读，表象上看是使用了快照技术，即读取的不是最新的数据，是快照（缓存）数据。本质原因是，mysql在RR级别下，操作数据的时候在数据上加了netx-key锁，使得当前操作的事务未提交前，不得进行新的操作，从而避免了幻读的出现。
 ![此处输入图片的描述][17]
 
@@ -805,6 +811,334 @@ mysql每次在操作数据的时候，会将更新前的数据存入undo log中�
 
 ![此处输入图片的描述][20]
 ![此处输入图片的描述][21]
+
+## 分区表
+
+- https://dev.mysql.com/doc/refman/5.7/en/partitioning.html
+- https://zhuanlan.zhihu.com/p/158023747
+
+对于分区表，先做一个简单的概述：它其实就是将一个大表按照一定规则分成若干个子表，理论上可以加快curd的速度。且分表的过程由mysql服务器自动完成，应用程序不会感知到，操作的还是一张表。
+
+如果是普通表希望转成分区表，如果业务运行暂停，那么可以直接使用`alter`语句[直接](https://developer.aliyun.com/article/285405)进行转换，否则可以通过如下步骤实现：
+
+* 创建分区临时表
+* 创建触发器，对主表操作的数据都会同步到临时表
+* 手动离线同步历史数据到临时表
+* 将主表、临时表名称互换（可能存在短暂的服务不可用）
+
+### 是否支持分区表属性
+
+通过如下命令查看是否支持：
+```mysql
+mysql> SHOW PLUGINS;
++------------+----------+----------------+---------+---------+
+| Name       | Status   | Type           | Library | License |
++------------+----------+----------------+---------+---------+
+| binlog     | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| partition  | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| ARCHIVE    | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| BLACKHOLE  | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| CSV        | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| FEDERATED  | DISABLED | STORAGE ENGINE | NULL    | GPL     |
+| MEMORY     | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| InnoDB     | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| MRG_MYISAM | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| MyISAM     | ACTIVE   | STORAGE ENGINE | NULL    | GPL     |
+| ndbcluster | DISABLED | STORAGE ENGINE | NULL    | GPL     |
++------------+----------+----------------+---------+---------+
+```
+
+### 分区类型
+
+所谓`分区类型`，其实就是我们需要指定一个规则，mysql服务器按照这个规则对大表进行拆分。
+
+#### RANGE partitioning
+根据指定列的值所属的连续区间进行分区，比如按照时间进行分区。
+
+比如我们可以使用如下方式创建RANGE分区表：
+```mysql
+CREATE TABLE employees (
+    id INT NOT NULL,
+    fname VARCHAR(30),
+    lname VARCHAR(30),
+    hired DATE NOT NULL DEFAULT '1970-01-01',
+    separated DATE NOT NULL DEFAULT '9999-12-31',
+    job_code INT NOT NULL,
+    store_id INT NOT NULL
+)
+PARTITION BY RANGE (store_id) (
+    PARTITION p0 VALUES LESS THAN (6),
+    PARTITION p1 VALUES LESS THAN (11),
+    PARTITION p2 VALUES LESS THAN (16),
+    PARTITION p3 VALUES LESS THAN (21)
+);
+```
+
+为了验证分区属性是否生效，我们可以使用如下语句（5.7及以后版本）进行测试：
+```mysql
+EXPLAIN  select * from employees where store_id=2;
+```
+执行结果如下：
+![range_part](./image/2021/range_part.jpg)
+
+其中`partitions`就是查询条件数据所属分区。
+
+上面这样创建分区表会有问题，例如我们执行下面这条插入语句：
+```mysql
+INSERT INTO `employees` (`id`, `fname`, `lname`, `hired`, `separated`, `job_code`, `store_id`)
+VALUES
+	(0, 'ddd', 'aaaaa', '1970-01-01', '9999-12-31', 0, 21);
+```
+插入会失败，会得到下面这个报错信息：
+```mysql
+Table has no partition for value 21
+```
+
+怎么解决呢？可以通过如下方式建表：
+```mysql
+CREATE TABLE employees (
+    id INT NOT NULL,
+    fname VARCHAR(30),
+    lname VARCHAR(30),
+    hired DATE NOT NULL DEFAULT '1970-01-01',
+    separated DATE NOT NULL DEFAULT '9999-12-31',
+    job_code INT NOT NULL,
+    store_id INT NOT NULL
+)
+PARTITION BY RANGE (store_id) (
+    PARTITION p0 VALUES LESS THAN (6),
+    PARTITION p1 VALUES LESS THAN (11),
+    PARTITION p2 VALUES LESS THAN (16),
+    PARTITION p3 VALUES LESS THAN MAXVALUE
+);
+```
+`MAXVALUE`的意思表示，分区列的值永远都会在落在它的区间内。假设后续落在p3这个区间的数据量太大，我们也可以通过`ALTER TABLE`命令对大的分区进行细分。
+
+比如：
+```mysql
+alter table employees reorganize partition p3 into(
+
+      partition p4 values less than(200),
+
+      partition p5 values less than(2000),
+      
+      partition p6 values less than(MAXVALUE)
+
+    );
+```
+
+
+#### RANGE COLUMNS partitioning
+
+RANGE COLUMNS其实与RANGE很相似，只是它允许多个列作为分区键，且数据的类型不仅仅局限整数。
+
+比如可以创建如下的分区表：
+```mysql
+CREATE TABLE rcx (
+    a INT,
+    b INT,
+    c CHAR(3),
+    d INT
+)
+PARTITION BY RANGE COLUMNS(a,d,c) (
+    PARTITION p0 VALUES LESS THAN (5,10,'ggg'),
+    PARTITION p1 VALUES LESS THAN (10,20,'mmm'),
+    PARTITION p2 VALUES LESS THAN (15,30,'sss'),
+    PARTITION p3 VALUES LESS THAN (MAXVALUE,MAXVALUE,MAXVALUE)
+);
+```
+
+这里需要注意一点，由于RANGE COLUMNS是多个列组合在一起决定一条数据放在哪个分区，mysql是按照最左匹配原则来的。
+
+比如针对上面的`rcx`表，我们插入如下数据：
+```mysql
+INSERT INTO `rcx` (`a`, `b`, `c`, `d`)
+VALUES
+	(8, NULL, 'aaa', 100);
+```
+
+* 单纯看a=8，数据应该落在p1
+* 单纯看d=100，数据应该落在p3
+* 单纯看c=aaa，数据应该落在p0
+
+然后使用如下sql查看数据的分区情况：
+```mysql
+SELECT PARTITION_NAME,TABLE_ROWS
+        FROM INFORMATION_SCHEMA.PARTITIONS
+        WHERE TABLE_NAME = 'rcx';
+```
+结果如下： 
+```java
+PARTITION_NAME	TABLE_ROWS
+p0	             0
+p1		         1
+p2	             0
+p3	             0
+```
+
+说明数据的分区规则，确实是按照最左匹配来的。
+
+注意一下下面的这种临界情况，假如有如下分区表：
+```mysql
+CREATE TABLE rc1 (
+    a INT,
+    b INT
+)
+PARTITION BY RANGE COLUMNS(a, b) (
+    PARTITION p0 VALUES LESS THAN (5, 12),
+    PARTITION p3 VALUES LESS THAN (MAXVALUE, MAXVALUE)
+);
+```
+然后插入一些临界数据：
+```mysql
+INSERT INTO rc1 VALUES (5,10), (5,11), (5,12);
+```
+同样的，我们看下数据分布：
+![range_columns_part](./image/2021/range_columns_part.jpg)
+
+可以看到，根据最左匹配原则，当第一列元素都等于5的时候，就得看第二列的元素的值了。
+
+他们的大小关系可以通过如下sql得到：
+```mysql
+mysql> SELECT (5,10) < (5,12), (5,11) < (5,12), (5,12) < (5,12);
++-----------------+-----------------+-----------------+
+| (5,10) < (5,12) | (5,11) < (5,12) | (5,12) < (5,12) |
++-----------------+-----------------+-----------------+
+|               1 |               1 |               0 |
++-----------------+-----------------+-----------------+
+1 row in set (0.00 sec)
+```
+
+注意下面这种分区表，并未使用字段的全部长度，也是可以的：
+```mysql
+CREATE TABLE employees_by_lname (
+    id INT NOT NULL,
+    fname VARCHAR(30),
+    lname VARCHAR(30),
+    hired DATE NOT NULL DEFAULT '1970-01-01',
+    separated DATE NOT NULL DEFAULT '9999-12-31',
+    job_code INT NOT NULL,
+    store_id INT NOT NULL
+)
+PARTITION BY RANGE COLUMNS (lname)  (
+    PARTITION p0 VALUES LESS THAN ('g'),
+    PARTITION p1 VALUES LESS THAN ('m'),
+    PARTITION p2 VALUES LESS THAN ('t'),
+    PARTITION p3 VALUES LESS THAN (MAXVALUE)
+);
+```
+
+#### LIST partitioning
+与RANGE分区类似，但是它是按照一些离散的枚举值来进行分区的。
+
+创建一个LIST类型的分区表：
+```mysql
+CREATE TABLE employees (
+    id INT NOT NULL,
+    fname VARCHAR(30),
+    lname VARCHAR(30),
+    hired DATE NOT NULL DEFAULT '1970-01-01',
+    separated DATE NOT NULL DEFAULT '9999-12-31',
+    job_code INT,
+    store_id INT
+)
+PARTITION BY LIST(store_id) (
+    PARTITION pNorth VALUES IN (3,5,6,9,17),
+    PARTITION pEast VALUES IN (1,2,10,11,19,20),
+    PARTITION pWest VALUES IN (4,12,13,14,18),
+    PARTITION pCentral VALUES IN (7,8,15,16)
+);
+```
+
+使用LIST类型分区，需要注意：如果插入的数据的分区列的值不再枚举值内，会报错，如下图所示。
+
+![list_part](./image/2021/list_part.jpg)
+
+
+
+#### LIST COLUMNS partitioning
+LIST COLUMNS与LIST的关系 与 RANGE COLUMNS和RANGE的区别很相似，它也是允许多列组合作为分区键，且数据范围更广（不局限于整数）。
+
+比如这样的单列分区键：
+```mysql
+CREATE TABLE customers_3 (
+    first_name VARCHAR(25),
+    last_name VARCHAR(25),
+    street_1 VARCHAR(30),
+    street_2 VARCHAR(30),
+    city VARCHAR(15),
+    renewal DATE
+)
+PARTITION BY RANGE COLUMNS(renewal) (
+    PARTITION pWeek_1 VALUES LESS THAN('2010-02-09'),
+    PARTITION pWeek_2 VALUES LESS THAN('2010-02-15'),
+    PARTITION pWeek_3 VALUES LESS THAN('2010-02-22'),
+    PARTITION pWeek_4 VALUES LESS THAN('2010-03-01')
+);
+```
+
+比如这样的多列分区键：
+```mysql
+CREATE TABLE lc (
+    a INT NULL,
+    b INT NULL
+)
+PARTITION BY LIST COLUMNS(a,b) (
+    PARTITION p0 VALUES IN( (0,0), (NULL,NULL) ),
+    PARTITION p1 VALUES IN( (0,1), (0,2), (0,3), (1,1), (1,2) ),
+    PARTITION p2 VALUES IN( (1,0), (2,0), (2,1), (3,0), (3,1) ),
+    PARTITION p3 VALUES IN( (1,3), (2,2), (2,3), (3,2), (3,3) )
+);
+```
+
+#### HASH partitioning
+用户指定一些运算规则（mysql支持的任何返回大于等于0的整数的运算都行），将数据进行运算，根据结果将数据进行分区。hash分区可以在一定程度上保证数据分布均匀。
+
+```mysql
+CREATE TABLE employees (
+    id INT NOT NULL,
+    fname VARCHAR(30),
+    lname VARCHAR(30),
+    hired DATE NOT NULL DEFAULT '1970-01-01',
+    separated DATE NOT NULL DEFAULT '9999-12-31',
+    job_code INT,
+    store_id INT
+)
+PARTITION BY HASH( YEAR(hired) )
+PARTITIONS 4;
+```
+注意，HASH函数内的expr需要是整数类型的。且数据要具有足够的区分度，比如上面选择`YEAR(...)`来做区分就不是很好，应该选择日期会更好。
+
+理论上，可以结合多个列来做hash，但是这样性能不好，不推荐。
+
+
+#### KEY partitioning
+与HASH分区类似，不同的是hash的规则不再是用户指定，由mysql自己指定。
+
+区别于hash分区，key分区其实是针对索引来设计的。
+
+下面的表会按照主键id进行分区：
+```mysql
+CREATE TABLE k1 (
+    id INT NOT NULL PRIMARY KEY,
+    name VARCHAR(20)
+)
+PARTITION BY KEY()
+PARTITIONS 2;
+```
+
+下面的表会按照唯一键进行分区：
+```mysql
+CREATE TABLE k1 (
+    id INT NOT NULL,
+    name VARCHAR(20),
+    UNIQUE KEY (id)
+)
+PARTITION BY KEY()
+PARTITIONS 2;
+```
+
+## count操作会不会锁表
 
   
  
