@@ -1140,6 +1140,16 @@ PARTITIONS 2;
 
 ## count操作会不会锁表
 
+- https://www.coder.work/article/518590
+- https://dev.mysql.com/doc/refman/5.6/en/glossary.html#glos_consistent_read
+- https://dev.mysql.com/doc/refman/5.6/en/innodb-consistent-read.html
+
+答案是，针对`myisam`存储引擎的表会锁表。但是针对`innodb`的表不会锁表。
+
+对于innodb类型的表，mysql使用了快照（snapshot）技术来保证读取数据的时候不会上锁。
+
+
+
   
  
 
