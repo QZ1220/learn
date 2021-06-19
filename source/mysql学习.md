@@ -1177,7 +1177,7 @@ SELECT COUNT(c2) FROM t1 WHERE c2 = 'cba';
 - https://dev.mysql.com/doc/refman/5.7/en/innodb-auto-increment-handling.html
 - https://www.jianshu.com/p/054cf6c10116
 
-在介绍之前，先看集中数据插入的方:
+在介绍之前，先看几种数据插入的方式:
 
 * Simple inserts
 
@@ -1196,7 +1196,23 @@ INSERT INTO t1 (c1,c2) VALUES (1,'a'), (NULL,'b'), (5,'c'), (NULL,'d');
 
 要想控制`AUTO_INCREMENT`数据插入时，对于整个表的影响（锁表），可以通过`innodb_autoinc_lock_mode`关键字进行设置。
 
+1. innodb_autoinc_lock_mode=0
 
+这种模式，也叫`traditional lock mode`，也就是说插入带有`AUTO_INCREMENT`属性的数据，mysql会在执行语句时，获取`table-level AUTO-INC`的锁，插入语句执行完就会释放（不是事务执行完才释放）。此时如果有两个语句都需要执行插入操作，那么有一个就必须等待锁。
+
+2. innodb_autoinc_lock_mode=1
+
+这也是mysql默认的模式，在这个模式下，只有在事先无法预知插入行数的情况下才会获取`table-level AUTO-INC`的锁，否则只是使用轻量级的互斥锁（锁的周期仅限于空间申请时，不需要整个insert语句执行结束）。
+
+当然，如果在已经有`table-level AUTO-INC`锁的情况下，获取轻量级锁也将会被阻塞住。
+
+3. innodb_autoinc_lock_mode=2
+
+在这种模式下，不会有`table-level AUTO-INC`锁的情况出现，所有的insert语句都可以同时执行。但是这种模式对于从其他表或者是从binary文件中恢复数据是不安全的。
+
+为什么不安全？
+
+比如，恢复数据的过程中，有另外的线程执行写入操作，那么此时，`AUTO_INCREMENT`列的值就会被占用一部分，那么数据恢复的过程就会报错。
 
 
 
