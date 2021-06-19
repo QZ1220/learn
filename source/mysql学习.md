@@ -22,10 +22,13 @@
       * [是否支持分区表属性](#是否支持分区表属性)
       * [分区类型](#分区类型)
          * [RANGE partitioning](#range-partitioning)
+         * [RANGE COLUMNS partitioning](#range-columns-partitioning)
          * [LIST partitioning](#list-partitioning)
+         * [LIST COLUMNS partitioning](#list-columns-partitioning)
          * [HASH partitioning](#hash-partitioning)
          * [KEY partitioning](#key-partitioning)
    * [count操作会不会锁表](#count操作会不会锁表)
+   * [AUTO_INCREMENT原理](#auto_increment原理)
 
 ## 主从集群搭建
 
@@ -1168,6 +1171,33 @@ UPDATE t1 SET c2 = 'cba' WHERE c2 = 'abc';
 SELECT COUNT(c2) FROM t1 WHERE c2 = 'cba';
 -- Returns 10: this txn can now see the rows it just updated.
 ```
+
+## AUTO_INCREMENT原理
+
+- https://dev.mysql.com/doc/refman/5.7/en/innodb-auto-increment-handling.html
+- https://www.jianshu.com/p/054cf6c10116
+
+在介绍之前，先看集中数据插入的方:
+
+* Simple inserts
+
+所谓`simple`，其实就是sql插入语句执行`之前`，总共需要插入的行数是已经可以预知的了。
+
+* Bulk inserts
+
+这个刚好和`simple`相反，在数据插入之前是无法预知数据的行数的。比如 `INSERT ... SELECT, REPLACE ... SELECT, and LOAD DATA`等语句。
+
+* Mixed-mode inserts
+
+这种情况，就是有些列指定了`AUTO_INCREMENT`的值，但是有些却没有指定，如下面的语句：
+```mysql
+INSERT INTO t1 (c1,c2) VALUES (1,'a'), (NULL,'b'), (5,'c'), (NULL,'d');
+```
+
+要想控制`AUTO_INCREMENT`数据插入时，对于整个表的影响（锁表），可以通过`innodb_autoinc_lock_mode`关键字进行设置。
+
+
+
 
 
 
