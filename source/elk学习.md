@@ -513,7 +513,7 @@ es的索引实质上是由一个或者多个物理分片组成的，分片数据
 
 #### 三个及以上分区的集群
 
-跟[上面]()一样，当分区数量超过三个时，`master-eligible`节点的数量也最好只设置为3个（可以选择三个zone，每个zone设置一个`master-eligible`节点）。
+跟[上面](https://github.com/AudiVehicle/learn/blob/master/source/elk%E5%AD%A6%E4%B9%A0.md#n%E8%8A%82%E7%82%B9%E9%9B%86%E7%BE%A4)一样，当分区数量超过三个时，`master-eligible`节点的数量也最好只设置为3个（可以选择三个zone，每个zone设置一个`master-eligible`节点）。
 
 
 ## es性能优化
