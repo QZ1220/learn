@@ -15,6 +15,9 @@
       * [logstash配置](#logstash配置)
       * [filebeat配置](#filebeat配置)
    * [Elasticsearch原理](#elasticsearch原理)
+      * [倒排索引](#倒排索引)
+      * [数据存储](#数据存储)
+      * [选主逻辑](#选主逻辑)
    * [es性能优化](#es性能优化)
    * [kibana日志监控组件sentinl安装及使用](#kibana日志监控组件sentinl安装及使用)
 
@@ -282,6 +285,7 @@ filebeat.inputs:
  2. 数据存储
  3. 选主逻辑
 
+### 倒排索引
 
 首先我们说是**倒排索引**：
 
@@ -291,6 +295,8 @@ filebeat.inputs:
 
 ![此处输入图片的描述][7]
 ![此处输入图片的描述][8]
+
+### 数据存储
 
 接下来我么说一下es的**数据存储**：
 
@@ -315,6 +321,8 @@ Elasticsearch 通过在后台定期进行段合并来解决这个问题。小的
 合并结束后老的段会被删除，新的段被 Flush到磁盘，同时写入一个包含新段且排除旧的和较小的段的新提交点，新的段被打开可以用来搜索。
 段合并的计算量庞大， 而且还要吃掉大量磁盘 I/O，段合并会拖累写入速率，如果任其发展会影响搜索性能。
 Elasticsearch 在默认情况下会对合并流程进行资源限制，所以搜索仍然有足够的资源很好地执行。
+
+### 选主逻辑
 
 然后我们在讨论一下es的**选主逻辑**：
 
@@ -491,12 +499,12 @@ services:
  
 
 
-  [1]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/elk.png?raw=true
-  [2]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/elastic.png?raw=true
-  [3]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/logstash.png?raw=true
-  [4]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/kibana.png?raw=true
-  [5]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/kibana_config.png?raw=true
-  [6]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/kibana_front_page.png?raw=true
-  [7]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/es1.png?raw=true
-  [8]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/es2.png?raw=true
-  [9]: https://github.com/Audi-A7/learn/blob/master/source/image/elk/es_translog.png?raw=true
+  [1]: https://github.com/Audi-A7/learn/blob/master/image/elk/elk.png?raw=true
+  [2]: https://github.com/Audi-A7/learn/blob/master/image/elk/elastic.png?raw=true
+  [3]: https://github.com/Audi-A7/learn/blob/master/image/elk/logstash.png?raw=true
+  [4]: https://github.com/Audi-A7/learn/blob/master/image/elk/kibana.png?raw=true
+  [5]: https://github.com/Audi-A7/learn/blob/master/image/elk/kibana_config.png?raw=true
+  [6]: https://github.com/Audi-A7/learn/blob/master/image/elk/kibana_front_page.png?raw=true
+  [7]: https://github.com/Audi-A7/learn/blob/master/image/elk/es1.png?raw=true
+  [8]: https://github.com/Audi-A7/learn/blob/master/image/elk/es2.png?raw=true
+  [9]: https://github.com/Audi-A7/learn/blob/master/image/elk/es_translog.png?raw=true
