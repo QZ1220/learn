@@ -18,6 +18,24 @@
       * [倒排索引](#倒排索引)
       * [数据存储](#数据存储)
       * [选主逻辑](#选主逻辑)
+   * [es高可用集群配置](#es高可用集群配置)
+      * [es节点角色](#es节点角色)
+         * [master](#master)
+         * [data](#data)
+         * [data_content](#data_content)
+         * [data_hot](#data_hot)
+         * [data_warm](#data_warm)
+         * [data_cold](#data_cold)
+         * [data_frozen](#data_frozen)
+         * [ingest](#ingest)
+         * [ml](#ml)
+         * [remote_cluster_client](#remote_cluster_client)
+         * [transform](#transform)
+         * [默认角色](#默认角色)
+         * [voting-only master-eligible](#voting-only-master-eligible)
+      * [es数据分片](#es数据分片)
+      * [小型es集群配置](#小型es集群配置)
+      * [大型es集群配置](#大型es集群配置)
    * [es性能优化](#es性能优化)
    * [kibana日志监控组件sentinl安装及使用](#kibana日志监控组件sentinl安装及使用)
 
@@ -353,6 +371,81 @@ Elasticsearch 支持同一个主机启动多个节点，Ping 的 Response 会包
 由于它支持任意数目的集群( 1- N )，所以不能像 Zookeeper 那样限制节点必须是奇数，也就无法用投票的机制来选主，而是通过一个规则。
 
 为了预防集群**脑裂**的问题发生，一般需要设置当集群一半以上的节点选出的master一致时，才能对外提供服务。
+
+## es高可用集群配置
+
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/high-availability-cluster-design.html
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/high-availability-cluster-small-clusters.html#high-availability-cluster-design-two-nodes-plus
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/high-availability-cluster-design-large-clusters.html#high-availability-cluster-design-large-clusters
+
+如果要一个es集群可以自愈，至少需要满足以下三个条件：
+
+* 一个master节点
+- 每个[角色]()的节点都至少有一个
+- 每个[分片]()都至少有一个备份
+
+### es节点角色
+
+我们可以通过修改`elasticsearch.yml`文件的`node.roles`配置来修改es节点在集群中的角色。如果我们没有指定这个配置的话，默认该节点是以下角色：
+
+#### master
+配置了`master`角色的节点可以通过选择，成为集群的主节点，从而实现控制集群，master节点一般负责一些轻量化的任务，比如创建、删除索引，集群节点感知，数据分片位置确定等功能。
+
+#### data
+顾名思义就是负责集群数据的存储，更新，搜索，聚合等功能的节点。这些节点都是IO、memory、CPU敏感型的，所以有必要对节点的这些指标进行监控，以便于在节点负载过高时进行扩容。注意：这个配置不可用和下面的`data_*`同时存在。
+
+#### data_content
+Content data nodes accommodate user-created content. They enable operations like CRUD, search and aggregations.
+
+#### data_hot
+Hot data nodes store time series data as it enters Elasticsearch. The hot tier must be fast for both reads and writes, and requires more hardware resources (such as SSD drives).
+
+#### data_warm
+Warm data nodes store indices that are no longer being regularly updated, but are still being queried. Query volume is usually at a lower frequency than it was while the index was in the hot tier. Less performant hardware can usually be used for nodes in this tier.
+
+#### data_cold
+Cold data nodes store read-only indices that are accessed less frequently. This tier uses less performant hardware and may leverage searchable snapshot indices to minimize the resources required.
+
+#### data_frozen
+The frozen tier stores partially mounted indices exclusively. We recommend you use dedicated nodes in the frozen tier.
+
+#### ingest
+具有这种配置的节点，可以在数据存入es索引前，对数据做一定的转换。一般来说，这种节点的负载较大，因为需要与`master`，`data`角色的节点分开。
+
+#### ml
+A node that has xpack.ml.enabled and the ml role.
+
+#### remote_cluster_client
+具有这个角色的节点，可以被当做远程客户端来使用。
+
+#### transform
+做数据转换用的节点。
+
+#### 默认角色
+默认情况下（此时`node.roles`是一个空数组），每个节点都是一个`coordinating`节点，他主要完成数据查询及聚合，扮演的是一个智能负载均衡器的角色。查询一般分为两个阶段，`scatter`和`gather`。`scatter`主要负责将查询指令分发到各个`data`节点去执行，`gather`主要负责将查询得到的数据进行聚合组装。
+
+#### voting-only master-eligible
+这种角色的节点，不会真正成为master节点，只是参与master的选举投票过程（简而言之：只有投票权，没有选举权）。要配置这种角色的节点，需要同时配置`master` and `voting_only`两种角色，例如：
+```java
+node.roles: [ master, voting_only ]
+```
+一个高可用集群需要确保至少有三个可成为`master`的节点，其中只允许有一个节点是`voting-only`角色的节点。由于`voting-only`节点只是负责投票，不参与选举，因此该节点的硬件配置可以稍微低一些。但是，包括`master-eligible`，`voting-only`在内的节点之间的网络需要确保低延迟、高可用，各节点的存储设备也要尽可能的快，因为具有这些角色的节点在集群状态更新中，占有重要地位。
+
+
+如果我们设置了集群中某个节点承担某个角色，那么需要确保集群的其他节点也正确设置了相应的角色，以确保集群正常运转。
+
+一些特殊的集群还有一些特殊的注意事项：
+
+- Cross-cluster search and cross-cluster replication require the remote_cluster_client role.
+- Stack Monitoring and ingest pipelines require the ingest role.
+- Fleet, the Elastic Security app, and transforms require the transform role. The remote_cluster_client role is also required to use cross-cluster search with these features.
+- Machine learning features, such as anomaly detection, require the ml role.
+
+
+### es数据分片
+
+### 小型es集群配置
+### 大型es集群配置
 
 
 
