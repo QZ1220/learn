@@ -386,6 +386,8 @@ Elasticsearch 支持同一个主机启动多个节点，Ping 的 Response 会包
 
 ### es节点角色
 
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html#node-ingest-node
+
 我们可以通过修改`elasticsearch.yml`文件的`node.roles`配置来修改es节点在集群中的角色。如果我们没有指定这个配置的话，默认该节点是以下角色：
 
 #### master
@@ -443,6 +445,19 @@ node.roles: [ master, voting_only ]
 
 
 ### es数据分片
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/scalability.html#scalability
+
+es的索引实质上是由一个或者多个物理分片组成的，分片数据有两种类型：`primaries`和`replicas`，primary分片的个数在索引创建时就已经确定，replica分片的个数可以随时调整，且不会影响索引的相关操作及数据的查询。
+
+在分片的大小与primary分片的个数上通常需要做一些权衡，因为分片太大集群数据的迁移就越久，primary分片的个数越多索引的维护就越麻烦。
+
+二者的平衡，有一些基本性能参数可以参考：
+
+- Aim to keep the average shard size between a few GB and a few tens of GB. For use cases with time-based data, it is common to see shards in the 20GB to 40GB range.
+- Avoid the gazillion shards problem. The number of shards a node can hold is proportional to the available heap space. As a general rule, the number of shards per GB of heap space should be less than 20.
+
+
+
 
 ### 小型es集群配置
 ### 大型es集群配置
