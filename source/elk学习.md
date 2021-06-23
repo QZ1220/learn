@@ -35,7 +35,15 @@
          * [voting-only master-eligible](#voting-only-master-eligible)
       * [es数据分片](#es数据分片)
       * [小型es集群配置](#小型es集群配置)
+         * [单节点集群](#单节点集群)
+         * [双节点集群](#双节点集群)
+         * [双节点集群（带voting-only节点）](#双节点集群带voting-only节点)
+         * [三节点集群](#三节点集群)
+         * [N节点集群](#n节点集群)
       * [大型es集群配置](#大型es集群配置)
+         * [两个分区的集群](#两个分区的集群)
+         * [两个分区的集群（带voting-only分区）](#两个分区的集群带voting-only分区)
+         * [三个及以上分区的集群](#三个及以上分区的集群)
    * [es性能优化](#es性能优化)
    * [kibana日志监控组件sentinl安装及使用](#kibana日志监控组件sentinl安装及使用)
 
@@ -375,14 +383,12 @@ Elasticsearch 支持同一个主机启动多个节点，Ping 的 Response 会包
 ## es高可用集群配置
 
 - https://www.elastic.co/guide/en/elasticsearch/reference/current/high-availability-cluster-design.html
-- https://www.elastic.co/guide/en/elasticsearch/reference/current/high-availability-cluster-small-clusters.html#high-availability-cluster-design-two-nodes-plus
-- https://www.elastic.co/guide/en/elasticsearch/reference/current/high-availability-cluster-design-large-clusters.html#high-availability-cluster-design-large-clusters
 
-如果要一个es集群可以自愈，至少需要满足以下三个条件：
+如果要一个es集群可以弹性扩容，至少需要满足以下三个条件：
 
-* 一个master节点
-- 每个[角色]()的节点都至少有一个
-- 每个[分片]()都至少有一个备份
+* 至少3个可成为master的节点
+- 每个[角色](https://github.com/AudiVehicle/learn/blob/master/source/elk%E5%AD%A6%E4%B9%A0.md#es%E8%8A%82%E7%82%B9%E8%A7%92%E8%89%B2)的节点都至少有2个
+- 每个[分片](https://github.com/AudiVehicle/learn/blob/master/source/elk%E5%AD%A6%E4%B9%A0.md#es%E6%95%B0%E6%8D%AE%E5%88%86%E7%89%87)都至少有2个备份，一个给primary分片，一个给replica分片
 
 ### es节点角色
 
@@ -460,8 +466,54 @@ es的索引实质上是由一个或者多个物理分片组成的，分片数据
 
 
 ### 小型es集群配置
+
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/high-availability-cluster-small-clusters.html#high-availability-cluster-design-one-node
+
+#### 单节点集群
+
+单节点集群是不可能自愈的，如果节点宕机只能通过历史数据进行手动恢复。且需要设置` index.number_of_replicas`（primary分片的数量） 为0（默认为1），以便于集群保持`green status`。不建议生产使用。
+
+#### 双节点集群
+
+建议两个节点都是`data`节点，且设置其中一个节点不能成为`master`节点，即明确指定哪个节点是`master`节点，因为不这样的话，假如一个宕机，另外一个节点由于无法获得超过半数的投票也无法成为master，集群就会宕机。
+
+连接集群的时候，也不应该只连接其中一个节点，最好使用负载均衡连接集群。不建议生产使用。
+
+#### 双节点集群（带voting-only节点）
+
+为了解决上面双节点集群的问题，我们可以在集群中再加入一个`voting-only`节点，该节点不处理具体的数据存储、查询，仅在集群选主时进行投票。
+
+集群外部的任何请求都不应该发到`voting-only`节点上。
+
+这种架构模式理论上是生产上可以实现集群自愈的最基本节点配置。
+
+#### 三节点集群
+
+可以自愈，生产可以使用。
+
+#### N节点集群
+
+当节点数量大于3的时候，我们就可以对集群各个节点进行一些定制化的设置了，比如某些节点指定为`data node`或者是`ingest node`等。
+
+虽然节点的数量大于了3个，但是可以成为master节点的数量最好设置为3个，不要太多。因为多了以后，选主的过程会耗费更长的时间，甚至于在比较大的集群里，可以直接指定某几个节点为只负责master角色的相关任务，且外部的相关请求都不应该发送到这几个节点上。
+
 ### 大型es集群配置
 
+涉及到大型es集群的配置，需要引入一个新的概念，`zone`（分区），可以理解为是一群公用硬件基础设施的节点，此时集群的自愈就不再以`node`为单位了，而是以`zone`为单位。
+
+#### 两个分区的集群
+
+这种情况下，需要注意每个分区的`master-eligible`节点的数量要不一致才行，避免两个zone一样多，导致选不出master。
+
+这种集群配置，只允许`master-eligible`节点少的zone宕机，不允许`master-eligible`节点多的宕机。
+
+#### 两个分区的集群（带voting-only分区）
+
+为了解决上面的只能特定zone宕机的问题，我们通过增加一个只含有一个`voting-only`节点的zone，另外两个zone各有一个`master-eligible`节点的模式来进行配置。
+
+#### 三个及以上分区的集群
+
+跟[上面]()一样，当分区数量超过三个时，`master-eligible`节点的数量也最好只设置为3个（可以选择三个zone，每个zone设置一个`master-eligible`节点）。
 
 
 ## es性能优化
