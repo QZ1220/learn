@@ -21,6 +21,7 @@
          * [延迟刷新](#延迟刷新)
          * [段合并](#段合并)
       * [选主逻辑](#选主逻辑)
+      * [数据存取](#数据存取)
    * [es高可用集群配置](#es高可用集群配置)
       * [es节点角色](#es节点角色)
          * [master](#master)
@@ -48,6 +49,7 @@
          * [两个分区的集群（带voting-only分区）](#两个分区的集群带voting-only分区)
          * [三个及以上分区的集群](#三个及以上分区的集群)
    * [es性能优化](#es性能优化)
+      * [如何提高查询效率](#如何提高查询效率)
    * [kibana日志监控组件sentinl安装及使用](#kibana日志监控组件sentinl安装及使用)
 
 ## elk搭建
@@ -313,6 +315,7 @@ filebeat.inputs:
  1. 倒排索引
  2. 数据存储
  3. 选主逻辑
+ 4. 数据存取
 
 ### 倒排索引
 
@@ -382,6 +385,11 @@ Elasticsearch 支持同一个主机启动多个节点，Ping 的 Response 会包
 由于它支持任意数目的集群( 1- N )，所以不能像 Zookeeper 那样限制节点必须是奇数，也就无法用投票的机制来选主，而是通过一个规则。
 
 为了预防集群**脑裂**的问题发生，一般需要设置当集群一半以上的节点选出的master一致时，才能对外提供服务。
+
+### 数据存取
+- https://github.com/AudiVehicle/advanced-java/blob/master/docs/high-concurrency/es-write-query-search.md
+
+
 
 ## es高可用集群配置
 
@@ -523,7 +531,16 @@ es的索引实质上是由一个或者多个物理分片组成的，分片数据
 
  - https://cloud.tencent.com/developer/article/1156231
 
-这篇文章比较详细的介绍了es的调优策略。
+### 如何提高查询效率
+- https://github.com/AudiVehicle/advanced-java/blob/master/docs/high-concurrency/es-optimizing-query-performance.md
+- https://www.elastic.co/guide/en/elasticsearch/reference/7.13/tune-for-search-speed.html#_use_faster_hardware_2
+- https://zhuanlan.zhihu.com/p/99718374
+
+
+
+
+
+ 
 
 ## kibana日志监控组件sentinl安装及使用
 
