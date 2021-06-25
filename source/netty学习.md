@@ -1,20 +1,36 @@
-﻿# netty nio学习 
+﻿# netty学习 
 
 标签（空格分隔）： 线程模型 零拷贝
 
 ---
 
-参考链接
-----
-https://segmentfault.com/a/1190000011883632
+* [netty学习](#netty学习)
+   * [零拷贝](#零拷贝)
+      * [传统方式实现文件传输](#传统方式实现文件传输)
+      * [零拷贝实现](#零拷贝实现)
+   * [线程模型](#线程模型)
+      * [NIO Reactor模型](#nio-reactor模型)
+      * [单线程Reactor](#单线程reactor)
+      * [多线程Reactor](#多线程reactor)
+         * [主从多线程](#主从多线程)
+   * [Netty线程模型](#netty线程模型)
+      * [串行化设计避免线程竞争](#串行化设计避免线程竞争)
+      * [定时任务与时间轮](#定时任务与时间轮)
+   * [NioEventLoop与NioChannel类关系](#nioeventloop与niochannel类关系)
+      * [NioEventLoop线程执行过程](#nioeventloop线程执行过程)
+   * [Netty中Reactor线程和worker线程所处理的事件](#netty中reactor线程和worker线程所处理的事件)
+      * [Server端NioEventLoop处理的事件](#server端nioeventloop处理的事件)
+      * [Client端NioEventLoop处理的事件](#client端nioeventloop处理的事件)
 
-https://www.cnblogs.com/200911/articles/10432551.html
+## 零拷贝
 
-零拷贝
----
+- https://segmentfault.com/a/1190000011883632
+
+- https://www.cnblogs.com/200911/articles/10432551.html
+
 所谓**零拷贝**，其实就是减少了数据在用户态与核心态之间的拷贝次数。
 
- - 传统方式实现文件传输
+### 传统方式实现文件传输
 
 传统方式的文件传输的一般代码如下：
 ```java
@@ -57,7 +73,7 @@ Socket.send(socket, buf, len);
 
 从图中看2，3两次copy是多余的，数据从kernel模式到user模式走了一圈，浪费了2次copy。
 
- - 零拷贝实现
+### 零拷贝实现
 上面的步骤中，2、3步是多余的。数据可以直接从read buffer 读缓存区传输到套接字缓冲区，也就是省去了将操作系统的read buffer 拷贝到程序的buffer，以及从程序buffer拷贝到socket buffer的步骤，直接将read buffer拷贝到socket buffer。JDK NIO中的的transferTo() 方法就能够让您实现这个操作，这个实现依赖于操作系统底层的sendFile（）实现的：
 ```java
 public void transferTo(long position, long count, WritableByteChannel target);
@@ -94,19 +110,16 @@ transferTo()方法，整个过程如下：
 
 Zero-Copy技术的使用场景有很多，比如Kafka, 又或者是Netty等，可以大大提升程序的性能。
 
-线程模型
-----
+## 线程模型
 
-参考链接：
-
- 1. https://www.infoq.cn/article/netty-threading-model
- 2. https://www.jianshu.com/p/38b56531565d
+- https://www.infoq.cn/article/netty-threading-model
+- https://www.jianshu.com/p/38b56531565d
 
 个人认为，链接2讲解的比较通俗易懂一点。其实，简单来说，netty的线程模型，就是参考reactor线程模型，将网络请求的监听，以及后续的处理，分成两个单独的线程池进行出路，同时处理的过程中，采用线程串行处理的方式，避免了线程的上下文的切换，从而进一步的提升了性能。
 
 下面将链接2的大部分内容摘抄如下：
 
- 1. NIO Reactor模型
+### NIO Reactor模型
 
 一个连接里完整的网络处理过程一般分为accept、read、decode、process、encode、send这几步。
 
@@ -120,13 +133,13 @@ Handler：事件处理器，绑定了某类事件，负责执行对应事件的T
 
 Acceptor：Handler的一种，绑定了connect事件。当客户端发起connect请求时，Reactor会将accept事件分发给Acceptor处理。
 
- - 单线程Reactor
+### 单线程Reactor
 
 ![此处输入图片的描述][7]
 
 这种模型，结构简单，实现也较为容易，因为不需要进行并发点控制，但是**缺点**也是显而易见的，因为单线程必然无法发挥多核处理器点优势，必然的随着访问请求的增长，肯定无法满足性能要求。一旦**reactor线程**意外跑飞或者进入死循环，会导致整个系统通信模块不可用。
 
- - 多线程Reactor
+### 多线程Reactor
 
 ![此处输入图片的描述][8]
 
@@ -138,7 +151,7 @@ b)网络IO的读/写操作等由一个worker reactor线程池负责，由线程�
 
 c)一个NIO线程可以同时处理N条链路，但是一个链路只注册在一个NIO线程上处理，防止发生并发操作问题。
 
- - 主从多线程
+#### 主从多线程
 
 ![此处输入图片的描述][9]
 
@@ -149,15 +162,14 @@ a)服务端用于接收客户端连接的不再是个1个单独的reactor线程�
 b)服务端启用多个ServerSocketChannel监听不同端口时，每个ServerSocketChannel的监听工作可以由线程池中的一个NIO线程完成。
 
 
-Netty线程模型
----------
+## Netty线程模型
 ![此处输入图片的描述][10]
 
 netty线程模型采用“服务端监听线程”和“IO线程”分离的方式，与多线程Reactor模型类似。
 
 抽象出NioEventLoop来表示一个不断循环执行处理任务的线程，每个NioEventLoop有一个selector，用于监听绑定在其上的socket链路。
 
-1、串行化设计避免线程竞争
+### 串行化设计避免线程竞争
 netty采用串行化设计理念，从消息的读取->解码->处理->编码->发送，始终由IO线程NioEventLoop负责。整个流程不会进行线程上下文切换，数据无并发修改风险。
 
 一个NioEventLoop聚合一个多路复用器selector，因此可以处理多个客户端连接。
@@ -166,7 +178,7 @@ netty只负责提供和管理“IO线程”，其他的业务线程模型由用�
 
 时间可控的简单业务建议直接在“IO线程”上处理，复杂和时间不可控的业务建议投递到后端业务线程池中处理。
 
-2、定时任务与时间轮
+### 定时任务与时间轮
 NioEventLoop中的Thread线程按照时间轮中的步骤不断循环执行：
 
 a)在时间片Tirck内执行selector.select()轮询监听IO事件；
@@ -175,8 +187,7 @@ b)处理监听到的就绪IO事件；
 
 c)执行任务队列taskQueue/delayTaskQueue中的非IO任务。
 
-NioEventLoop与NioChannel类关系
---------------------------
+## NioEventLoop与NioChannel类关系
 ![此处输入图片的描述][11]
 
  注意图中点箭头指向
@@ -191,9 +202,10 @@ NioEventLoop与NioChannel类关系
 
 每个AbstractNioChannel都绑定有一个自己的DefaultChannelPipeline
 
-NioEventLoop线程执行过程
-------------------
+### NioEventLoop线程执行过程
+
 1、轮询监听的IO事件
+
 1）netty的轮询注册机制
 
 netty将AbstractNioChannel内部的jdk类SelectableChannel对象注册到NioEventLoopGroup中的jdk类Selector对象上去，并且将AbstractNioChannel作为SelectableChannel对象的一个attachment附属上。
@@ -280,12 +292,11 @@ b)计算本次循环执行的截止时间
 
 c)循环执行taskQueue中的任务，每隔64个任务检查一下是否已过截止时间，直到taskQueue中任务全部执行完或者超过执行截止时间。
 
-Netty中Reactor线程和worker线程所处理的事件
-------------------------------
+## Netty中Reactor线程和worker线程所处理的事件
 
- 1. Server端NioEventLoop处理的事件
+### Server端NioEventLoop处理的事件
 ![此处输入图片的描述][12]
-  2. Client端NioEventLoop处理的事件
+### Client端NioEventLoop处理的事件
 ![此处输入图片的描述][13]
   
 
