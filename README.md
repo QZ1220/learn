@@ -54,7 +54,7 @@ redis学习
 netty学习
 -------
 
-[netty nio](https://github.com/Audi-A7/learn/blob/master/source/netty%20nio%E5%AD%A6%E4%B9%A0.md)
+[netty](https://github.com/AudiVehicle/learn/blob/master/source/netty%E5%AD%A6%E4%B9%A0.md)
 
 工作总结
 ----
