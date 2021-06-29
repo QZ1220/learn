@@ -50,6 +50,13 @@
          * [三个及以上分区的集群](#三个及以上分区的集群)
    * [es性能优化](#es性能优化)
       * [如何提高查询效率](#如何提高查询效率)
+         * [Filesystem Cache](#filesystem-cache)
+         * [堆硬件](#堆硬件)
+         * [良好的文档模型](#良好的文档模型)
+         * [尽可能的过滤查询结果](#尽可能的过滤查询结果)
+         * [数据预热](#数据预热)
+         * [分页性能优化](#分页性能优化)
+         * [节点副本调优](#节点副本调优)
    * [kibana日志监控组件sentinl安装及使用](#kibana日志监控组件sentinl安装及使用)
 
 ## elk搭建
@@ -532,11 +539,39 @@ es的索引实质上是由一个或者多个物理分片组成的，分片数据
  - https://cloud.tencent.com/developer/article/1156231
 
 ### 如何提高查询效率
-- https://github.com/AudiVehicle/advanced-java/blob/master/docs/high-concurrency/es-optimizing-query-performance.md
 - https://www.elastic.co/guide/en/elasticsearch/reference/7.13/tune-for-search-speed.html#_use_faster_hardware_2
 - https://zhuanlan.zhihu.com/p/99718374
 
+#### Filesystem Cache
 
+es的查询严重依赖于`Filesystem Cache`，通常情况下，为了能够让查询更快，需要确保一半的内存容量都用来做`Filesystem Cache`，以便于es可以存储热点索引数据。
+
+#### 堆硬件
+
+对，你没有看错，有钱就是王道。该升级CPU升级CPU，该上SSD上SSD，不要怕。
+
+#### 良好的文档模型
+
+为了让查询的成本更低，那么数据存储进es的时候，结构设计就要合理，避免不必要的查询。
+反例：
+- join查询应极力避免，查询效率会慢上百倍
+- nested查询会使查询速度下降几倍
+
+#### 尽可能的过滤查询结果
+
+也就是说，查询结构返回的数据越多，越慢。如果非要查询多个字段的内容，可以把他们合在一起存储。
+
+#### 数据预热
+
+人为的加载热点数据
+
+#### 分页性能优化
+
+- 使用游标
+
+#### 节点副本调优
+
+虽然，主分片只能有一个，但是副分片可以有多个。
 
 
 
