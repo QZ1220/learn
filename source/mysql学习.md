@@ -1308,7 +1308,7 @@ mysql> SET GLOBAL binlog_format = 'MIXED';
 
 ### 日志压缩
 
-从mysql 8.0.20开始，binlog文件支持压缩了，通过`binlog_transaction_compression`来开启日志压缩。mysql采用zstd压缩算法，支持1-22级的压缩，数字越大，压缩程度越高。
+从mysql 8.0.20开始，binlog文件支持压缩了，通过`binlog_transaction_compression`来开启日志压缩。mysql采用[zstd](https://www.jianshu.com/p/71eb3071d3e0)压缩算法，支持1-22级的压缩，数字越大，压缩程度越高。
 
 ## undolog redolog
 
