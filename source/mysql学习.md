@@ -29,6 +29,12 @@
          * [KEY partitioning](#key-partitioning)
    * [count操作会不会锁表](#count操作会不会锁表)
    * [AUTO_INCREMENT原理](#auto_increment原理)
+   * [binlog](#binlog)
+      * [什么是binlog](#什么是binlog)
+      * [binlog文件格式](#binlog文件格式)
+      * [日志压缩](#日志压缩)
+
+
 
 ## 主从集群搭建
 
@@ -1213,6 +1219,97 @@ INSERT INTO t1 (c1,c2) VALUES (1,'a'), (NULL,'b'), (5,'c'), (NULL,'d');
 为什么不安全？
 
 比如，恢复数据的过程中，有另外的线程执行写入操作，那么此时，`AUTO_INCREMENT`列的值就会被占用一部分，那么数据恢复的过程就会报错。
+
+
+## binlog
+
+- https://dev.mysql.com/doc/refman/8.0/en/binary-log.html
+
+mysql版本：v8.0.25
+
+为方便后续测试，这里使用docker搭建了一个mysql容器：
+```mysql
+docker run --name mysql-8 -e MYSQL_ROOT_PASSWORD=root -p 3300:3306 -d mysql:8.0.25
+```
+
+### 什么是binlog
+
+binlog记录了数据库的相关变更信息，比如表的创建或者表数据的变化，而且它还会记录相关语句的执行的耗时（查询语句binlog不会记录，general query log才会记）。binlog与存储引擎无关（区别于undo log，redo log，这两个是innodb独有的），是数据mysql的一个功能。
+
+binlog日志文件的存在主要有两方面的意义：
+
+- 主从复制：从服务器需要从主服务器获取binlog文件以实现数据同步（当然，除了使用binlog同步数据外，也可以通过GTID方式也可以实现数据同步）。
+- 数据恢复：服务器可以从无到有，使用binlog恢复数据库的数据。
+
+使用`show variables like '%log_bin%'`可以看到mysql是否开启了binlog，默认开启。
+
+为了保护一些敏感数据，mysql从8.0.14版本开始，binlog支持文件加密。设置`binlog_encryption`系统属性为`ON`即可。
+
+binlog在服务器重启或者文件大小超过`max_binlog_size`限制（我这里默认配置是1GB）时，将会生成新的文件。binlog文件名是`binlog.`加一串数字，比如我的docker容器输出如下：
+```shell
+root@9110047439ca:/var/lib/mysql# ls -hl binl*
+-rw-r----- 1 mysql mysql 3.0M Jul  3 03:36 binlog.000001
+-rw-r----- 1 mysql mysql  179 Jul  3 06:05 binlog.000002
+-rw-r----- 1 mysql mysql  156 Jul  3 06:05 binlog.000003
+-rw-r----- 1 mysql mysql   48 Jul  3 06:05 binlog.index
+```
+其中binlog.index文件记录了哪些日志文件已经被使用过。
+
+为了验证binlog文件的正确性，默认情况下，mysql使用日志长度（ the length of the event）来验证，当然也可以通过checksum来进行验证。`binlog_checksum`控制写入checksum信息到日志文件所用的校验方法（我这里是`CRC32`），`master_verify_checksum`控制读入日志文件时，是否进行checksum校验。
+
+`RESET MASTER`或者`PURGE BINARY LOGS`可以删除所有的binlog日志文件。
+
+查看binlog日志文件内容，可以使用`mysqlbinlog`命令，如下所示：
+```mysql
+root@9110047439ca:/var/lib/mysql# mysqlbinlog binlog.000003
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 4
+```
+
+在事务开启时，mysql会根据`binlog_cache_size`属性（默认32KB）申请一块内存空间，来缓冲一些事务执行需要的statement，如果超过了32KB，那么会向磁盘申请临时文件，以保证空间足够。
+
+binlog日志会在事务commit之前生成，为了保证log的生成，事务的commit的原子性，innodb采用了两阶段事务提交。
+
+binlog日志的落盘是由`sync_binlog`控制的，默认是1，表示每次commit都会伴随着binlog文件的落盘。但是这无疑会损耗数据库性能，需要综合评估。
+
+### binlog文件格式
+
+总共有三种格式，严格来说是两种：STATEMENT、ROW（默认格式）、MIXED
+```mysql
+mysql> SET GLOBAL binlog_format = 'STATEMENT';
+mysql> SET GLOBAL binlog_format = 'ROW';
+mysql> SET GLOBAL binlog_format = 'MIXED';
+```
+
+注意，即便是在`ROW`模式下，对于某些sql影响的数据量太大的话，mysql也还是会使用`STATEMENT`模式来记录。此外，所有的DDL（data definition language）语句（比如CREATE TABLE, ALTER TABLE, or DROP TABLE）也都是`STATEMENT`模式来记录。
+
+在`MIXED`模式下，如果sql中出现UUID()、USER()、CURRENT_USER(), or CURRENT_USER、LOAD_FILE()等，mysql自动从STATEMENT模式转换成ROW模式。
+
+
+注意：不是所有的存储引擎都支持所有的日志模式，具体支持如下表所示：
+| Storage Engine        | Row Logging Supported   |  Statement Logging Supported  |
+| --------   | :-----:  | :----:  |
+| ARCHIVE     | Yes |   Yes     |
+| BLACKHOLE        |   Yes   |   Yes   |
+| CSV        |    Yes    |  Yes  |
+| EXAMPLE        |    Yes    |  No  |
+| FEDERATED        |    Yes    |  Yes  |
+| HEAP        |    Yes    |  Yes  |
+| InnoDB        |    Yes    |  Yes when the transaction isolation level is REPEATABLE READ or SERIALIZABLE; No otherwise.  |
+| MyISAM        |    Yes    |  Yes  |
+| MERGE        |    Yes    |  Yes  |
+| NDB        |    Yes    |  No  |
+
+
+### 日志压缩
+
+从mysql 8.0.20开始，binlog文件支持压缩了，通过`binlog_transaction_compression`来开启日志压缩。mysql采用zstd压缩算法，支持1-22级的压缩，数字越大，压缩程度越高。
+
+
+
+
 
 
 
