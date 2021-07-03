@@ -33,6 +33,9 @@
       * [什么是binlog](#什么是binlog)
       * [binlog文件格式](#binlog文件格式)
       * [日志压缩](#日志压缩)
+   * [undolog redolog](#undolog-redolog)
+      * [redolog](#redolog)
+      * [undolog](#undolog)
 
 
 
@@ -1306,6 +1309,26 @@ mysql> SET GLOBAL binlog_format = 'MIXED';
 ### 日志压缩
 
 从mysql 8.0.20开始，binlog文件支持压缩了，通过`binlog_transaction_compression`来开启日志压缩。mysql采用zstd压缩算法，支持1-22级的压缩，数字越大，压缩程度越高。
+
+## undolog redolog
+
+- https://dev.mysql.com/doc/refman/8.0/en/innodb-redo-log.html
+
+undolog redolog都是innodb所特有的。binlog的产生要先于undo、redolog。
+
+binlog-->redo、undolog-->commit
+
+
+### redolog
+redolog的主要作用是当mysql服务器宕机，重启时，mysql可以完成宕机时未完成的事务（此时，mysql不会接受外部连接）。所以，redolog是需要落磁盘的。
+
+默认情况下，redolog在磁盘上的文件名为ib_logfile0 and ib_logfile1。
+
+和binlog一样，redolog也是在事务commit之前生成，多个事务产生的redolog可以一起提交。但是这里有一点需要注意，redolog和commit根据官方文档，没看到有说使用二阶段事务来保证二者的原子性。
+
+### undolog
+
+undolog的作用是，如果mysql服务器最近的事务回滚了，那么数据要能够回滚到事务执行前的状态。
 
 
 
