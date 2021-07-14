@@ -37,6 +37,10 @@
          * [mannual failover](#mannual-failover)
          * [集群高可用保证（方案）](#集群高可用保证方案)
          * [集群节点版本升级](#集群节点版本升级)
+   * [redis锁](#redis锁)
+      * [普通方式加锁](#普通方式加锁)
+      * [redission](#redission)
+      * [red lock](#red-lock)
 
 
 ## redis数据结构
@@ -1249,6 +1253,132 @@ S: 697ca741233cc451817194f358cff3a71a81ea58 172.20.110.65:7005
 - 升级这个slave节点
 
 如果需要原来的master在升级后还是master，再次进行failover的过程即可。
+
+## redis锁
+
+在一个系统中，如果希望对一个资源同一时间只有一个线程持有，那么就需要加锁。无论是共享锁还是排他锁，都是锁。
+
+加锁的方式有很多，比如利用mysql加锁，利用zookeeper加锁，利用synchronized关键字加锁，但是这些要么性能不能满足，要么复杂度较高，要么不能适用于分布式环境。
+
+总的来说，使用redis实现锁，是一个不错的选择，无论是性能，还是复杂度，还是分布式环境都可以满足要求。
+
+### 普通方式加锁
+
+就我所见过的代码里，有下面这种加锁方式(java伪代码)：
+```java
+try{
+    while(true){
+        if !redis.haskey(lockKey){
+            result = redis.setnx(lockKey,value,expireTime)
+                if result
+                    // 加锁成功
+                    break;
+        }else{
+            // 没获取到就休眠一段时间再获取
+            Thread.sleep(50)
+        }
+    }
+    
+    // do biz
+    
+}catch{
+    
+}finally{
+    // 释放锁
+    redis.del(lockKey)
+}
+```
+这种加锁的方式，在大部分情况下，应该是可以正常工作的，但是也存在一些问题。
+- 如果do biz的时间超过了expireTime，那么当这个应用去真正执行finally语句中的删除锁的语句时，有可能会删除其他线程持有的锁，之前的[笔记](https://github.com/AudiVehicle/learn/blob/master/source/2021%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md#%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8%E4%B9%8B%E5%90%88%E7%90%86%E5%88%A0%E9%99%A4%E9%94%81)也有描述过这种情况。
+
+要解决这个问题，也好办，我们可以把expireTime设置的比较大，但是这并不是一个好的办法，因为一档应用直接crash，那么在没有认为干预的情况下，这个锁要很久才释放，牺牲了系统的性能。
+
+当然，更为合理的一种方案，我们可以在删除锁的时候判断锁是否依然存在，且锁的value是不是我们当初设置的value，伪代码如下：
+```java
+try{
+    while(true){
+        if !redis.haskey(lockKey){
+            result = redis.setnx(lockKey,lockValue,expireTime)
+                if result
+                    // 加锁成功
+                    break;
+        }else{
+            // 没获取到就休眠一段时间再获取
+            Thread.sleep(50)
+        }
+    }
+    
+    // do biz
+    
+}catch{
+    
+}finally{
+    if lockValue == redis.get(lockKey){
+        // 释放锁
+        redis.del(lockKey)
+    }
+}
+```
+这种方式是不是就是完美的呢？显然不是，因为同样可能存在do biz时长超过expireTime的情况，这会导致同一时间有两个或者多个线程获取到了锁。
+
+为了解决这个问题，我们可以使用下面这种思路，当一个线程获取锁的时候，发现锁已经被他人持有了，那么我们就可以`好心`的给他的锁进行续期。其实redission lock就是这种思路，下面我们一起看下。
+
+### redission
+
+- https://www.cnblogs.com/kiko2014551511/p/11527108.html
+
+redission lock不仅实现了锁的互斥功能，还完成了诸如锁的可重入，锁的续期等功能。
+
+```lua
+if (redis.call('exists', KEYS[1]) == 0) then 
+        redis.call('hset', KEYS[1], ARGV[2], 1);
+        redis.call('pexpire', KEYS[1], ARGV[1]); 
+        return nil;
+        end;
+if (redis.call('hexists', KEYS[1], ARGV[2]) == 1) then
+        redis.call('hincrby', KEYS[1], ARGV[2], 1);
+        redis.call('pexpire', KEYS[1], ARGV[1]); 
+        return nil;
+        end;
+return redis.call('pttl', KEYS[1]);
+```
+- KEYS[1]:表示你加锁的那个key
+- ARGV[1]:表示锁的有效期，默认30s
+- ARGV[2]:表示表示加锁的客户端ID,类似于这样：8743c9c0-0795-4907-87fd-6c719a6b4586:1
+
+之所以使用lua脚本是因为他可以保证我们的redis操作语句是原子性的。
+
+看脚本就知道，加锁的逻辑很简单，这里不赘述。
+
+然后看下释放锁的脚本：
+```lua
+if (redis.call('exists', KEYS[1]) == 0) then
+    redis.call('publish', KEYS[2], ARGV[1]);
+    return 1; 
+    end;
+if (redis.call('hexists', KEYS[1], ARGV[3]) == 0) then 
+    return nil;
+    end;
+local counter = redis.call('hincrby', KEYS[1], ARGV[3], -1); 
+if (counter > 0) then
+    redis.call('pexpire', KEYS[1], ARGV[2]); 
+    return 0; 
+else redis.call('del', KEYS[1]); 
+    redis.call('publish', KEYS[2], ARGV[1]); 
+    return 1;
+    end;
+return nil;
+```
+
+### red lock
+- https://redis.io/topics/distlock
+
+
+
+
+
+
+
 
 
 
