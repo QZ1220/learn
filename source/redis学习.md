@@ -40,6 +40,9 @@
    * [redis锁](#redis锁)
       * [普通方式加锁](#普通方式加锁)
       * [redission](#redission)
+         * [加锁](#加锁)
+         * [加锁注意事项](#加锁注意事项)
+         * [解锁](#解锁)
       * [red lock](#red-lock)
 
 
@@ -1321,13 +1324,15 @@ try{
 ```
 这种方式是不是就是完美的呢？显然不是，因为同样可能存在do biz时长超过expireTime的情况，这会导致同一时间有两个或者多个线程获取到了锁。
 
-为了解决这个问题，我们可以使用下面这种思路，当一个线程获取锁的时候，发现锁已经被他人持有了，那么我们就可以`好心`的给他的锁进行续期。其实redission lock就是这种思路，下面我们一起看下。
+为了解决这个问题，我们可以使用redisson。
 
 ### redission
 
-- https://www.cnblogs.com/kiko2014551511/p/11527108.html
+- https://zhuanlan.zhihu.com/p/135864820
 
 redission lock不仅实现了锁的互斥功能，还完成了诸如锁的可重入，锁的续期等功能。
+
+#### 加锁
 
 ```lua
 if (redis.call('exists', KEYS[1]) == 0) then 
@@ -1348,7 +1353,215 @@ return redis.call('pttl', KEYS[1]);
 
 之所以使用lua脚本是因为他可以保证我们的redis操作语句是原子性的。
 
-看脚本就知道，加锁的逻辑很简单，这里不赘述。
+看脚本就知道，加锁的逻辑很简单:
+
+1. 判断是否有加锁，没有的话就进行加锁，并且设置值为1，表示重入次数；然后设置过期时间，默认30s；退出
+2. 如果已经存在锁，且是同一客户端加的锁，就将重入次数加1，并且重置锁过期时间；退出
+3. 如果没有加锁成功，那么返回当前需要争抢的锁的剩余生存时间（毫秒）
+
+此外，如果某个线程获取锁成功，那么redission会启动一个后台线程（watch dog），每隔10秒监控当前线程是否还持有锁，有就续期。避免业务还没执行完，锁就被释放了。
+
+#### 加锁注意事项
+这里有两点需要注意：
+1. 如果要启用`看门狗`机制，那么无论是是使用`lock`还是`tryLock`方法，内部的`leaseTime`都要传入`-1`才行。因为源码里面只有它为1才会进行续期。
+
+为了验证这个我们可以如下代码进行测试：
+```java
+        RLock myLock = redissonClient.getLock("myLock");
+        myLock.lock(20, TimeUnit.SECONDS);
+        log.info("加锁成功，线程开始休眠40秒");
+        Thread.sleep(40 * 1000);
+        log.info("休眠结束");
+```
+在加锁成功的日志输出后，我们可以尝试不断刷新redis，查看锁的ttl，可以发现它确实的没有续期的（直接将超时时间重置为30秒）。
+
+我们可以将上面的第二行代码修改成如下：
+```java
+        myLock.lock(-1, TimeUnit.SECONDS);
+```
+发现它确实是进行了续期。
+
+也正是因为有了这个续期的机制，因此我们在使用时一定不要忘记解锁，否则极有可能造成死锁。
+
+相关源码如下：
+```java
+// RedissonLock 3.16.0版本
+    private <T> RFuture<Long> tryAcquireAsync(long waitTime, long leaseTime, TimeUnit unit, long threadId) {
+        RFuture<Long> ttlRemainingFuture;
+        if (leaseTime != -1) {
+            ttlRemainingFuture = tryLockInnerAsync(waitTime, leaseTime, unit, threadId, RedisCommands.EVAL_LONG);
+        } else {
+            ttlRemainingFuture = tryLockInnerAsync(waitTime, internalLockLeaseTime,
+                    TimeUnit.MILLISECONDS, threadId, RedisCommands.EVAL_LONG);
+        }
+        ttlRemainingFuture.onComplete((ttlRemaining, e) -> {
+            if (e != null) {
+                return;
+            }
+
+            // lock acquired
+            if (ttlRemaining == null) {
+            // 如果leaseTime不是-1，那么就不会启用看门狗
+                if (leaseTime != -1) {
+                    internalLockLeaseTime = unit.toMillis(leaseTime);
+                } else {
+                    scheduleExpirationRenewal(threadId);
+                }
+            }
+        });
+        return ttlRemainingFuture;
+    }
+```
+scheduleExpirationRenewal方法源码：
+```java
+    protected void scheduleExpirationRenewal(long threadId) {
+        ExpirationEntry entry = new ExpirationEntry();
+        //     private static final ConcurrentMap<String, ExpirationEntry> EXPIRATION_RENEWAL_MAP = new ConcurrentHashMap<>();  可以看出他是一个map
+        ExpirationEntry oldEntry = EXPIRATION_RENEWAL_MAP.putIfAbsent(getEntryName(), entry);
+        if (oldEntry != null) {
+            oldEntry.addThreadId(threadId);
+        } else {
+            entry.addThreadId(threadId);
+            // 定时续期
+            renewExpiration();
+        }
+    }
+```
+
+renewExpiration方法：
+```java
+    private void renewExpiration() {
+        ExpirationEntry ee = EXPIRATION_RENEWAL_MAP.get(getEntryName());
+        if (ee == null) {
+            return;
+        }
+        
+        Timeout task = commandExecutor.getConnectionManager().newTimeout(new TimerTask() {
+            @Override
+            public void run(Timeout timeout) throws Exception {
+                ExpirationEntry ent = EXPIRATION_RENEWAL_MAP.get(getEntryName());
+                if (ent == null) {
+                    return;
+                }
+                Long threadId = ent.getFirstThreadId();
+                if (threadId == null) {
+                    return;
+                }
+                
+                RFuture<Boolean> future = renewExpirationAsync(threadId);
+                future.onComplete((res, e) -> {
+                    if (e != null) {
+                        log.error("Can't update lock " + getRawName() + " expiration", e);
+                        EXPIRATION_RENEWAL_MAP.remove(getEntryName());
+                        return;
+                    }
+                    
+                    if (res) {
+                        // reschedule itself
+                        renewExpiration();
+                    }
+                });
+            }
+        }, internalLockLeaseTime / 3, TimeUnit.MILLISECONDS);
+        
+        ee.setTimeout(task);
+    }
+```
+可以看出其内部启用了定任务每隔10秒进行一次续期，续期的源码：
+```java
+    protected RFuture<Boolean> renewExpirationAsync(long threadId) {
+        return evalWriteAsync(getRawName(), LongCodec.INSTANCE, RedisCommands.EVAL_BOOLEAN,
+                "if (redis.call('hexists', KEYS[1], ARGV[2]) == 1) then " +
+                        "redis.call('pexpire', KEYS[1], ARGV[1]); " +
+                        "return 1; " +
+                        "end; " +
+                        "return 0;",
+                Collections.singletonList(getRawName()),
+                internalLockLeaseTime, getLockName(threadId));
+    }
+```
+
+2. 当出现多个线程争抢锁，对于为获取到锁的线程，并不会一来就while死循环去争抢锁，而是会基于redis的消息订阅模式，当持有锁的线程释放时，会发布事件，然后这些需要抢锁的线程才会进入while死循环去争抢锁「仅限于使用tryLock方式获取锁」。
+
+```java
+    @Override
+    public boolean tryLock(long waitTime, long leaseTime, TimeUnit unit) throws InterruptedException {
+        long time = unit.toMillis(waitTime);
+        long current = System.currentTimeMillis();
+        long threadId = Thread.currentThread().getId();
+        Long ttl = tryAcquire(waitTime, leaseTime, unit, threadId);
+        // lock acquired
+        if (ttl == null) {
+            return true;
+        }
+        
+        time -= System.currentTimeMillis() - current;
+        if (time <= 0) {
+            acquireFailed(waitTime, unit, threadId);
+            return false;
+        }
+        
+        current = System.currentTimeMillis();
+        // 订阅消息
+        RFuture<RedissonLockEntry> subscribeFuture = subscribe(threadId);
+        if (!subscribeFuture.await(time, TimeUnit.MILLISECONDS)) {
+            // 取消任务
+            if (!subscribeFuture.cancel(false)) {
+                subscribeFuture.onComplete((res, e) -> {
+                    if (e == null) {
+                    // 取消订阅
+                        unsubscribe(subscribeFuture, threadId);
+                    }
+                });
+            }
+            acquireFailed(waitTime, unit, threadId);
+            return false;
+        }
+
+        try {
+            time -= System.currentTimeMillis() - current;
+            if (time <= 0) {
+                acquireFailed(waitTime, unit, threadId);
+                return false;
+            }
+        
+            while (true) {
+                long currentTime = System.currentTimeMillis();
+                ttl = tryAcquire(waitTime, leaseTime, unit, threadId);
+                // lock acquired
+                if (ttl == null) {
+                    return true;
+                }
+
+                time -= System.currentTimeMillis() - currentTime;
+                if (time <= 0) {
+                    acquireFailed(waitTime, unit, threadId);
+                    return false;
+                }
+
+                // waiting for message
+                currentTime = System.currentTimeMillis();
+                if (ttl >= 0 && ttl < time) {
+                    subscribeFuture.getNow().getLatch().tryAcquire(ttl, TimeUnit.MILLISECONDS);
+                } else {
+                    subscribeFuture.getNow().getLatch().tryAcquire(time, TimeUnit.MILLISECONDS);
+                }
+
+                time -= System.currentTimeMillis() - currentTime;
+                if (time <= 0) {
+                    acquireFailed(waitTime, unit, threadId);
+                    return false;
+                }
+            }
+        } finally {
+        // 无论是否获取锁，都要取消订阅
+            unsubscribe(subscribeFuture, threadId);
+        }
+//        return get(tryLockAsync(waitTime, leaseTime, unit));
+    }
+```
+
+#### 解锁
 
 然后看下释放锁的脚本：
 ```lua
@@ -1370,8 +1583,26 @@ else redis.call('del', KEYS[1]);
 return nil;
 ```
 
+- KEYS[1]：getRawName()，锁的名称，如myLock
+- KEYS[2]：getChannelName()，订阅频道，如redisson_lock__channel:{myLock}
+- ARGV[1]：LockPubSub.UNLOCK_MESSAGE，解锁锁定的消息，这里是数字0
+- ARGV[2]：internalLockLeaseTime，锁定时间
+- ARGV[3]：getLockName(threadId)，如：02363f87-3e03-4310-879a-ff0ce6094c57:75
+
+解锁逻辑也很清晰：
+1. 判断锁是否存在，不存在就直接pub释放锁的消息
+2. 锁若存在，就对重入次数减1
+3. 如果剩余重入次数大于0，那么重置ttl
+4. 如果剩余重入次数小于等于0，pub释放锁的消息
+
+使用redission虽然可以解决锁的重入，续期等功能，但是还是避免不了redis单点故障的问题，即便是集群模式也同样存在问题。
+
+主要的问题就在于，有可能redis在主从同步前挂掉，那么已经加锁的数据可能还来不及写入从节点，此时新的线程来就有可能获取到同样的锁，从而导致锁的互斥性被破坏。
+
 ### red lock
 - https://redis.io/topics/distlock
+
+
 
 
 
