@@ -48,6 +48,7 @@
          * [时钟问题](#时钟问题)
          * [重试策略](#重试策略)
          * [宕机恢复](#宕机恢复)
+         * [使用](#使用)
 
 
 ## redis数据结构
@@ -1652,8 +1653,56 @@ return nil;
 一个好的方案是，C节点延迟启动，也就是C节点避免再参与宕机前的lock的锁定，这样就可以防止上面的情况出现。但是这样也有一点隐患，就是如果集群的大多数节点都宕机了，那么这种延迟启动将会导致获取lock的过程出现一段时间的不可用。
 
 
+#### 使用
 
+- https://blog.csdn.net/stone_yw/article/details/88062938
 
+本质上来说，就是创建多个单节点的redis的连接，然后每个节点获取获取锁，最后释放锁。
+
+```java
+        Config config1 = new Config();
+        config1.useSingleServer().setAddress("redis://xxxx1:xxx1")
+                .setPassword("xxxx1")
+                .setDatabase(0);
+        RedissonClient redissonClient1 = Redisson.create(config1);
+        Config config2 = new Config();
+        config2.useSingleServer()
+                .setAddress("redis://xxxx2:xxx2")
+                .setPassword("xxxx2")
+                .setDatabase(0);
+
+        RedissonClient redissonClient2 = Redisson.create(config2);
+
+        Config config3 = new Config();
+        config3.useSingleServer().
+                setAddress("redis://xxxx3:xxx3")
+                .setPassword("xxxx3")
+                .setDatabase(0);
+
+        RedissonClient redissonClient3 = Redisson.create(config3);
+
+        String lockName = "redlock-test";
+        RLock lock1 = redissonClient1.getLock(lockName);
+        RLock lock2 = redissonClient2.getLock(lockName);
+        RLock lock3 = redissonClient3.getLock(lockName);
+
+        RedissonRedLock redLock = new RedissonRedLock(lock1, lock2, lock3);
+        boolean isLock;
+        try {
+            isLock = redLock.tryLock(500, 30000, TimeUnit.MILLISECONDS);
+            System.out.println("isLock = " + isLock);
+            if (isLock) {
+                // lock success, do something;
+                Thread.sleep(30000);
+            }
+        } catch (Exception e) {
+
+        } finally {
+            // 无论如何, 最后都要解锁
+            redLock.unlock();
+            System.out.println("unlock success");
+        }
+```
 
 
 
