@@ -1,8 +1,8 @@
-﻿# 消息队列学习
+﻿# rabbitmq学习
 
 标签（空格分隔）： rabbitmq
 
-* [消息队列学习](#消息队列学习)
+* [rabbitmq学习](#rabbitmq学习)
    * [环境信息](#环境信息)
    * [mq对比](#mq对比)
    * [rabbitmq](#rabbitmq)
@@ -16,6 +16,13 @@
       * [spring集成rabbitmq](#spring集成rabbitmq)
       * [springBoot集成rabbitmq](#springboot集成rabbitmq)
       * [springCloud集成rabbitmq](#springcloud集成rabbitmq)
+   * [rabbitmq集群](#rabbitmq集群)
+      * [warren模式](#warren模式)
+      * [mirror模式](#mirror模式)
+         * [版本信息](#版本信息)
+         * [mirror队列搭建](#mirror队列搭建)
+         * [HaProxy搭建](#haproxy搭建)
+         * [KeepAlived搭建](#keepalived搭建)
 
 ## 环境信息
 os:macOs 10.14.5
@@ -644,6 +651,237 @@ public class RabbitmqReceiver {
     }  
 }  
 ```
+
+## rabbitmq集群
+
+### warren模式
+
+- https://livebook.manning.com/book/rabbitmq-in-action/chapter-7/13
+
+![rabbitmq_warren](./image/rabbitmq/rabbitmq_warren.jpeg)
+
+如上图所示，这种模式相对简单，通过haProxy来自动调整对外服务的节点（主挂了，备上）。主备节点的存储是共享的。
+
+### mirror模式
+
+- https://cloud.tencent.com/developer/article/1631148
+
+![rabbitmq_mirror](./image/rabbitmq/rabbitmq_mirror.jpg)
+
+镜像集群模式下，消息会在所有的节点进行同步，可以保证数据的不丢失。一般需要3个及以上的节点，并且是基数个节点，因为有些集群操作会涉及到选举投票过程，避免出现`脑裂`。
+
+这种方案虽然对于消息的可靠性可以保证，但是由于消息在每个节点都进行同步，大大消耗了集群带宽。
+
+这里使用docker搭建一下上图列出的镜像集群架构。
+
+#### 版本信息
+- docker:18.09.2
+- rabbitmq:3.8.19
+- HaProxy:2.2.15
+- KeepAlived:2.0.20
+
+#### mirror队列搭建
+
+这里为了方便使用docker-compose模式，新建一个名为`rabbitmq-docker-compose.yml`的文件，内容如下：
+```yaml
+#  启动命令  docker-compose up  （-d可以后台运行）docker-compose up  xx-service 可以指定启动某一个应用
+#  停止命令  docker-compose down
+version: '2'
+
+services:
+  master:
+    image: rabbitmq:3.8.19-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    hostname:
+      master
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'myrabbitmqcookie'
+
+  slave01:
+    image: rabbitmq:3.8.19-management
+    ports:
+      - 5673:5672
+      - 15673:15672
+    hostname:
+      slave01
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'myrabbitmqcookie'
+
+  slave02:
+    image: rabbitmq:3.8.19-management
+    ports:
+      - 5674:5672
+      - 15674:15672
+    hostname:
+      slave02
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'myrabbitmqcookie'
+```
+
+使用如下命令启动：
+```shell
+docker-compose -f rabbitmq-docker-compose.yml up -d
+## 停止使用
+docker-compose -f rabbitmq-docker-compose.yml down
+```
+
+然后使用docker exec命令，分别进入slave01、slave02容器执行如下命令：
+```shell
+root@slave01:/# rabbitmqctl stop_app
+RABBITMQ_ERLANG_COOKIE env variable support is deprecated and will be REMOVED in a future version. Use the $HOME/.erlang.cookie file or the --erlang-cookie switch instead.
+Stopping rabbit application on node rabbit@slave01 ...
+root@slave01:/#
+root@slave01:/#
+root@slave01:/# rabbitmqctl join_cluster rabbit@master
+RABBITMQ_ERLANG_COOKIE env variable support is deprecated and will be REMOVED in a future version. Use the $HOME/.erlang.cookie file or the --erlang-cookie switch instead.
+Clustering node rabbit@slave01 with rabbit@master
+root@slave01:/# rabbitmqctl start_app
+RABBITMQ_ERLANG_COOKIE env variable support is deprecated and will be REMOVED in a future version. Use the $HOME/.erlang.cookie file or the --erlang-cookie switch instead.
+Starting node rabbit@slave01 ...
+root@slave01:/#
+```
+即，首先停止app，然后假如集群，然后再启动app。
+
+此时任意节点打开rabbitmq浏览器控制台，都可以看到三个节点已经组成了集群：
+![rabbitmq_cluster_view](./image/rabbitmq/rabbitmq_cluster_view.jpg)
+
+配置镜像模式，在任意节点执行如下指令：
+```shell
+root@slave01:/# rabbitmqctl set_policy ha-all "^" '{"ha-mode":"all"}'
+RABBITMQ_ERLANG_COOKIE env variable support is deprecated and will be REMOVED in a future version. Use the $HOME/.erlang.cookie file or the --erlang-cookie switch instead.
+Setting policy "ha-all" for pattern "^" to "{"ha-mode":"all"}" with priority "0" for vhost "/" ...
+root@slave01:/#
+```
+
+至此，rabbitmq基本的镜像队列就搭建完了。
+
+#### HaProxy搭建
+
+- https://www.huaweicloud.com/articles/272c98db522ca892fb1ffc36919c41b8.html
+- https://hub.docker.com/_/haproxy?tab=description&page=1&ordering=last_updated
+
+创建`haproxy.cfg`文件，内容如下：
+```shell
+global
+  daemon
+  maxconn 256
+
+defaults
+  mode http
+  timeout connect 5000ms
+
+  timeout client 5000ms
+
+  timeout server 5000ms
+
+listen rabbitmq_cluster
+##监听5677端口转发到rabbitmq服务
+  bind 0.0.0.0:5677
+  option tcplog
+  mode tcp
+  balance leastconn
+  # rabbitmq集群节点配置 #inter 每隔2秒对mq集群做健康检查， 2次正确证明服务器可用，3次失败证明服务器不可用，并且配置主备机制
+  server master master:5672 check inter 2s rise 2 fall 3
+  server slave01 slave01:5672 check inter 2s rise 2 fall 3
+  server slave02 slave02:5672 check inter 2s rise 2 fall 3
+
+listen http_front 
+##haproxy的客户页面
+  bind 0.0.0.0:80
+  # 设置haproxy监控地址
+  stats uri /haproxy?stats
+
+listen rabbitmq_admin 
+##监听8001端口转发到rabbitmq的客户端
+  bind 0.0.0.0:8001
+  server master master:15672 check inter 2s rise 2 fall 3
+  server slave01 slave01:15672 check inter 2s rise 2 fall 3
+  server slave02 slave02:15672 check inter 2s rise 2 fall 3
+```
+
+在`haproxy.cfg`文件的同级目录下创建`Dockerfile`文件，内容如下：
+```shell
+FROM haproxy:2.2.15
+COPY haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
+```
+执行docker build命令：
+```shell
+docker build -t my-haproxy .
+```
+
+然后执行docker命令启动容器，注意这里要和rabbitmq在一个network里面：
+```shell
+docker run -d --name rabbitmq-haproxy01  -p 8090:80 -p 5677:5677 -p 8001:8001 --net=rabbitmq_default  my-haproxy:latest 
+
+docker run -d --name rabbitmq-haproxy02  -p 8091:80 -p 5678:5677 -p 8002:8001 --net=rabbitmq_default  my-haproxy:latest 
+```
+
+访问`haproxy?stats`页面查看控制台信息：
+![rabbitmq_haproxy](./image/rabbitmq/rabbitmq_haproxy.jpg)
+
+此外访问http://x.x.x.x:8001或者http://x.x.x.x:8002也可以访问到rabbitmq的控制台：
+![rabbitmq_cluster_view](./image/rabbitmq/rabbitmq_cluster_view2.jpg)
+
+#### KeepAlived搭建
+
+- https://blog.csdn.net/qq_21108311/article/details/82973763
+
+在两个haProxy的docker容器内分别安装keepalived服务：
+```shell
+更新update，安装keepalived
+apt-get update
+apt-get install keepalived
+ 
+安装vim 安装ifconfig命令 安装ping
+apt-get install net-tools    
+apt-get install iputils-ping
+apt-get install vim-gtk
+```
+
+在rabbitmq-haproxy01容器类新建配置文件/etc/keepalived/keepalived.conf：
+```shell
+vrrp_instance  VI_1 {
+    state  MASTER
+    interface  eth0
+    virtual_router_id  100
+    priority  100
+    advert_int  1
+    authentication {
+        auth_type  PASS
+        auth_pass  123456
+    }
+    virtual_ipaddress {
+        172.24.0.70
+    }
+}
+```
+
+在rabbitmq-haproxy02容器类新建配置文件/etc/keepalived/keepalived.conf：
+```shell
+vrrp_instance  VI_1 {
+    state  BACKUP
+    interface  eth0
+    virtual_router_id  100
+    priority  80
+    advert_int  1
+    authentication {
+        auth_type  PASS
+        auth_pass  123456
+    }
+    virtual_ipaddress {
+        172.24.0.70
+    }
+}
+```
+
+
+
+
+
+
+
 
 
   [1]: https://github.com/Audi-A7/learn/blob/master/source/image/rabbitmq/8.png?raw=true
