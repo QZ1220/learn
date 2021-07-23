@@ -818,7 +818,7 @@ docker run -d --name rabbitmq-haproxy01  -p 8090:80 -p 5677:5677 -p 8001:8001 --
 docker run -d --name rabbitmq-haproxy02  -p 8091:80 -p 5678:5677 -p 8002:8001 --net=rabbitmq_default  my-haproxy:latest 
 ```
 
-访问`http://x.x.x.x:8090/haproxy?statshaproxy?stats`页面查看控制台信息：
+访问`http://x.x.x.x:8090/haproxy?stats`页面查看控制台信息：
 ![rabbitmq_haproxy](./image/rabbitmq/rabbitmq_haproxy.jpg)
 
 此外访问http://x.x.x.x:8001或者http://x.x.x.x:8002也可以访问到rabbitmq的控制台：
@@ -876,7 +876,58 @@ vrrp_instance  VI_1 {
 }
 ```
 
+两个容器内部，使用`service keepalived start`启动容器（实际我使用docker搭建的时候，无论是在mac还是linux都无法实现虚拟ip的绑定，一直没解决尴尬。。），即完成容器内部的keepalived配置即启动。
 
+接下来是宿主机的配置，宿主机也要安装keepalived。通过如下命令：
+```linux
+apt-get -y keepalived
+```
+
+同样在宿主机创建keepalived的配置文件/etc/keepalived/keepalived.conf（以下配置不是我本机配置，是签名参考链接博客里的配置）：
+```linux
+vrrp_instance VI_1 {
+    state MASTER
+#这里是宿主机的网卡，可以通过ip a查看当前自己电脑上用的网卡名是哪个
+    interface ens33
+    virtual_router_id 100
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+#这里是指定的一个宿主机上的虚拟ip，一定要和宿主机网卡在同一个网段，我的宿主机网卡ip是192.168.1.85，所以指定虚拟ip是给的90
+       	192.168.1.90
+    }
+}
+ 
+#接受监听数据来源的端口，网页入口使用
+virtual_server 192.168.1.90 8888 {
+    delay_loop 3
+    lb_algo rr 
+    lb_kind NAT
+    persistence_timeout 50
+    protocol TCP
+#把接受到的数据转发给docker服务的网段及端口，由于是发给docker服务，所以和docker服务数据要一致
+    real_server 172.20.0.100 8888 {
+        weight 1
+    }
+}
+ 
+#接受数据库数据端口，宿主机数据库端口是3306，所以这里也要和宿主机数据接受端口一致
+virtual_server 192.168.1.90 3306 {
+    delay_loop 3
+    lb_algo rr 
+    lb_kind NAT
+    persistence_timeout 50
+    protocol TCP
+#同理转发数据库给服务的端口和ip要求和docker服务中的数据一致
+    real_server 172.20.0.100 3306 {
+        weight 1
+    }
+}
+```
 
 
 
