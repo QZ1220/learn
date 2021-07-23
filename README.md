@@ -44,7 +44,7 @@ elk
 消息队列学习
 ------
 
-[rabbitmq学习](https://github.com/Audi-A7/learn/blob/master/source/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md)
+[rabbitmq学习](https://github.com/AudiVehicle/learn/blob/master/source/rabbitmq%E5%AD%A6%E4%B9%A0.md)
 
 redis学习
 -------
