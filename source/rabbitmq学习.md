@@ -818,7 +818,7 @@ docker run -d --name rabbitmq-haproxy01  -p 8090:80 -p 5677:5677 -p 8001:8001 --
 docker run -d --name rabbitmq-haproxy02  -p 8091:80 -p 5678:5677 -p 8002:8001 --net=rabbitmq_default  my-haproxy:latest 
 ```
 
-访问`haproxy?stats`页面查看控制台信息：
+访问`http://x.x.x.x:8090/haproxy?statshaproxy?stats`页面查看控制台信息：
 ![rabbitmq_haproxy](./image/rabbitmq/rabbitmq_haproxy.jpg)
 
 此外访问http://x.x.x.x:8001或者http://x.x.x.x:8002也可以访问到rabbitmq的控制台：
