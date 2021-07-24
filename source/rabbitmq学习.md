@@ -19,10 +19,15 @@
    * [rabbitmq集群](#rabbitmq集群)
       * [warren模式](#warren模式)
       * [mirror模式](#mirror模式)
+         * [原理简介](#原理简介)
+         * [选主](#选主)
          * [版本信息](#版本信息)
          * [mirror队列搭建](#mirror队列搭建)
          * [HaProxy搭建](#haproxy搭建)
          * [KeepAlived搭建](#keepalived搭建)
+   * [rabbitmq的federation插件](#rabbitmq的federation插件)
+      * [简介](#简介)
+      * [实际搭建](#实际搭建)
 
 ## 环境信息
 os:macOs 10.14.5
@@ -967,6 +972,109 @@ virtual_server 192.168.1.90 3306 {
     }
 }
 ```
+
+## rabbitmq的federation插件
+
+- https://www.rabbitmq.com/federation.html
+
+### 简介
+该插件可以方便的实现两个mq集群之间的消息同步，如下图所示：
+![federation](./image/rabbitmq/federation.jpg)
+
+根据[官网](https://www.rabbitmq.com/federation.html)的介绍，federation插件有一下一些优势：
+
+- 同步机制建立在broker级别，不一定是集群级别
+- 同步的broker之间可以分别使用不同的用户以及虚拟主机
+- 同步的broker之间底层使用的RabbitMQ 和 Erlang可以是不同的版本
+- 该插件使用amqp协议，对公网支持较为友好，且支持断点续传
+
+### 实际搭建
+
+同样基于docker-compose模式搭建两个镜像队列集群，假设是a、b集群。compose文件如下：
+
+```yaml
+#  启动命令  docker-compose up  （-d可以后台运行）docker-compose up  xx-service 可以指定启动某一个应用
+#  停止命令  docker-compose down
+version: '2'
+
+services:
+  mastera:
+    image: rabbitmq:3.8.19-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    hostname:
+      mastera
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'myrabbitmqcookie'
+
+  slavea01:
+    image: rabbitmq:3.8.19-management
+    ports:
+      - 5673:5672
+      - 15673:15672
+    hostname:
+      slavea01
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'myrabbitmqcookie'
+```
+
+以及
+```yaml
+#  启动命令  docker-compose up  （-d可以后台运行）docker-compose up  xx-service 可以指定启动某一个应用
+#  停止命令  docker-compose down
+version: '2'
+
+services:
+  masterb:
+    image: rabbitmq:3.8.19-management
+    ports:
+      - 5682:5672
+      - 15682:15672
+    hostname:
+      masterb
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'myrabbitmqcookie'
+
+  slaveb01:
+    image: rabbitmq:3.8.19-management
+    ports:
+      - 5683:5672
+      - 15683:15672
+    hostname:
+      slaveb01
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'myrabbitmqcookie'
+```
+
+分别启动两个集群，然后按照[上面](https://github.com/AudiVehicle/learn/blob/master/source/rabbitmq%E5%AD%A6%E4%B9%A0.md#mirror%E9%98%9F%E5%88%97%E6%90%AD%E5%BB%BA)的步骤，使两个集群的节点组成镜像队列模式。
+
+我们使用federation插件连接a、b集群的slave节点，又因为我们各自集群内部使用的是镜像队列的模式，因此可以实现集群间的数据同步。
+
+在slavea、slaveb的容器内部执行如下命令：
+```linux
+rabbitmq-plugins enable rabbitmq_federation
+
+rabbitmq-plugins enable rabbitmq_federation_management
+```
+
+我们这里设置salveb为上游，slavea为下游，也就是slavea需要从slaveb同步消息。下面开始设置。
+
+进入`http://172.20.150.115:15683`，在slaveb的控制台新建交换机exchange和队列queue，设置路由key为test，并且二者简历绑定关系。
+
+选择`admin`选项，设置upstream，如下图所示：
+
+![federation_upstream](./image/rabbitmq/federation_upstream.jpg)
+
+设置policy：
+
+![federation_policy](./image/rabbitmq/federation_policy.jpg)
+
+此时就完成了federation插件的设置，此时集群的架构是这样的：
+![federation_cluster](./image/rabbitmq/federation_cluster.jpg)
+
+
+
 
 
 
