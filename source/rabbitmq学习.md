@@ -1073,9 +1073,7 @@ rabbitmq-plugins enable rabbitmq_federation_management
 此时就完成了federation插件的设置，此时集群的架构是这样的：
 ![federation_cluster](./image/rabbitmq/federation_cluster.jpg)
 
-
-
-
+注意：federation插件的消息复制是单向的，不是双向的，如果确实需要从downstream复制消息到upstream，可以再新建一个federation连接，使得二者的角色互换。
 
 
 
