@@ -665,12 +665,51 @@ public class RabbitmqReceiver {
 ### mirror模式
 
 - https://cloud.tencent.com/developer/article/1631148
+- https://www.rabbitmq.com/ha.html
+
+#### 原理简介
 
 ![rabbitmq_mirror](./image/rabbitmq/rabbitmq_mirror.jpg)
 
 镜像集群模式下，消息会在所有的节点进行同步，可以保证数据的不丢失。一般需要3个及以上的节点，并且是基数个节点，因为有些集群操作会涉及到选举投票过程，避免出现`脑裂`。
 
-这种方案虽然对于消息的可靠性可以保证，但是由于消息在每个节点都进行同步，大大消耗了集群带宽。
+这种方案虽然对于消息的可靠性可以保证，但是由于消息在每个节点都进行同步，大大消耗了集群带宽，并且在[官方文档](https://www.rabbitmq.com/ha.html)中这种方案也标明了后续会被废弃掉（Important: mirroring of classic queues will be removed in a future version of RabbitMQ. Consider using quorum queues or a non-replicated classic queue instead.）。
+
+每个镜像队列都有一个leader replica和一个或者多个mirrors (replicas)。如果持有leader replica的节点宕机，那么最老的且完成数据同步的节点将会被选举成为新的leader。当然，未同步的节点也可以成为leader，这取决于集群参数配置。
+
+镜像队列在集群中复制多少份是合理的？官方文档给出的是超过半数的节点持有镜像队列副本即可。比如2/3 or 3/5等。这个可以通过设置policy参数`ha-mode`和`ha-params`实现：
+
+| ha-mode       | ha-params  |  解释  |
+| --------   | -----  | ----  |
+| exactly     | count |   镜像队列在集群中公有count份， 如果count大于集群节点个数，那么就是每个节点都有副本    |
+| all	        |   (none)   |   镜像队列每个节点都会复制，不是一个很好的选择   |
+| nodes	        |    node names    |  镜像队列在指定的节点才有副本，新加入的节点会自动进行副本复制  |
+
+#### 选主
+
+前面说了，每个镜像队列都有一个primary replica，所有的针对queue的操作都会先路由到primary replica上，然后再同步到其他的节点。所以，为了避免某个节点持有了太多的primary replica，导致负载过高，需要进行一些策略设置。
+
+using the x-queue-master-locator optional queue argument, setting the queue-master-locator policy key or by defining the queue_master_locator key in the configuration file. Here are the possible strategies and how to set them:
+
+- Pick the node hosting the minimum number of leaders: `min-masters`
+- Pick the node the client that declares the queue is connected to: `client-local`
+- Pick a random node: `random`
+
+如果设置的新的policy使得原来的leader不再满足成为leader的条件，为了保证数据同步，rabbitmq会让旧的leader与新的节点至少进行一次数据同步，然后旧的leader才可以下线。
+
+For example, if a queue is on [A B] (with A the leader), and you give it a nodes policy telling it to be on [C D], it will initially end up on [A C D]. As soon as the queue synchronises on its new mirrors [C D], the leader on A will shut down.
+
+If the leader fails, then one of the mirrors will be promoted to leader as follows:
+
+1. The longest running mirror is promoted to leader, the assumption being that it is most likely to be fully synchronised with the leader. If there is no mirror that is synchronised with the leader, messages that only existed on leader will be lost.
+2. The mirror considers all previous consumers to have been abruptly disconnected. It requeues all messages that have been delivered to clients but are pending acknowledgement. This can include messages for which a client has issued acknowledgements, say, if an acknowledgement was either lost on the wire before reaching the node hosting queue leader, or it was lost when broadcast from the leader to the mirrors. In either case, the new leader has no choice but to requeue all messages that it has not seen acknowledgements for.
+3. Consumers that have requested to be notified when a queue fails over will be notified of cancellation.
+4. As a result of the requeuing, clients that re-consume from the queue must be aware that they are likely to subsequently receive messages that they have already received.
+5. As the chosen mirror becomes the leader, no messages that are published to the mirrored queue during this time will be lost (barring subsequent failures on the promoted node). Messages published to a node that hosts queue mirror are routed to the queue leader and then replicated to all mirrors. Should the leader fail, the messages continue to be sent to the mirrors and will be added to the queue once the promotion of a mirror to the leader completes.
+6. Messages published by clients using publisher confirms will still be confirmed even if the leader (or any mirrors) fail between the message being published and a confirmation received by the publisher. From the point of view of the publisher, publishing to a mirrored queue is no different from publishing to a non-mirrored one.
+
+
+Flow Control
 
 这里使用docker搭建一下上图列出的镜像集群架构。
 
