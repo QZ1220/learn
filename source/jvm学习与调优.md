@@ -100,7 +100,18 @@ FGCT: Full garbage collection time.
 GCT: Total garbage collection time.
 ```
 ### jmap
+
+[这个命令](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/jmap.html)主要用于输出jvm的堆信息，例如可以使用如下命令保存堆信息为二进制文件：
+```java
+# jmap -dump:format=b,file=build.hprof 49450
+Dumping heap to /Users/wangquanzhou/ideaProj/learn/build.hprof ...
+Heap dump file created
+```
+然后配合mat等工具可进行内存溢出分析
+
 ### jstack
+
+[这个命令](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/jstack.html)主要输出jvm的线程栈信息以及线程状态。jstack pid即可查看该pid下的线程栈信息及线程状态。
 
 
 
