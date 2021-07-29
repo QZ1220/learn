@@ -14,32 +14,12 @@
 
 [2021学习笔记](https://github.com/AudiVehicle/learn/blob/master/source/2021%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md)
 
-区块链学习
------
-
-[区块链学习总结](https://github.com/Audi-A7/learn/blob/master/source/%E5%8C%BA%E5%9D%97%E9%93%BE%E6%80%BB%E7%BB%93.md)
-
-[椭圆曲线SM2](https://github.com/Audi-A7/learn/blob/master/source/SM2%E6%A4%AD%E5%9C%86%E6%9B%B2%E7%BA%BF%E5%85%AC%E9%92%A5%E5%AF%86%E7%A0%81%E7%AE%97%E6%B3%95.pdf)
-
-[椭圆曲线笔记](https://github.com/Audi-A7/learn/blob/master/source/ECC%E6%A4%AD%E5%9C%86%E6%9B%B2%E7%BA%BF%E7%AC%94%E8%AE%B0.docx)
-
-[hyperledger学习](https://github.com/Audi-A7/learn/blob/master/source/hyperledger%26corda.md)
-
-git学习
------
-
-[git笔记](https://github.com/AudiVehicle/learn/blob/master/source/git%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md)
-
 
 数据库学习
 -----
 
 [mysql相关学习](https://github.com/AudiVehicle/learn/blob/master/source/mysql%E5%AD%A6%E4%B9%A0.md)
 
-elk
------
-
-[elk](https://github.com/AudiVehicle/learn/blob/master/source/elk%E5%AD%A6%E4%B9%A0.md)
 
 消息队列学习
 ------
@@ -67,3 +47,24 @@ netty学习
 ---
 
 [数据结构与算法](https://github.com/Audi-A7/learn/blob/master/source/%E7%AE%97%E6%B3%95.md)
+
+elk
+-----
+
+[elk](https://github.com/AudiVehicle/learn/blob/master/source/elk%E5%AD%A6%E4%B9%A0.md)
+
+git学习
+-----
+
+[git笔记](https://github.com/AudiVehicle/learn/blob/master/source/git%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md)
+
+区块链学习
+-----
+
+[区块链学习总结](https://github.com/Audi-A7/learn/blob/master/source/%E5%8C%BA%E5%9D%97%E9%93%BE%E6%80%BB%E7%BB%93.md)
+
+[椭圆曲线SM2](https://github.com/Audi-A7/learn/blob/master/source/SM2%E6%A4%AD%E5%9C%86%E6%9B%B2%E7%BA%BF%E5%85%AC%E9%92%A5%E5%AF%86%E7%A0%81%E7%AE%97%E6%B3%95.pdf)
+
+[椭圆曲线笔记](https://github.com/Audi-A7/learn/blob/master/source/ECC%E6%A4%AD%E5%9C%86%E6%9B%B2%E7%BA%BF%E7%AC%94%E8%AE%B0.docx)
+
+[hyperledger学习](https://github.com/Audi-A7/learn/blob/master/source/hyperledger%26corda.md)
