@@ -12,6 +12,9 @@
       * [jstat](#jstat)
       * [jmap](#jmap)
       * [jstack](#jstack)
+   * [调优](#调优)
+      * [打印gc日志](#打印gc日志)
+      * [分析gc日志](#分析gc日志)
 
 hint：以下如无特殊说明都是针对jdk8而言
 
@@ -111,7 +114,52 @@ Heap dump file created
 
 ### jstack
 
-[这个命令](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/jstack.html)主要输出jvm的线程栈信息以及线程状态。jstack pid即可查看该pid下的线程栈信息及线程状态。
+[这个命令](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/jstack.html)主要输出jvm的线程栈信息以及线程状态。`jstack pid`即可查看该pid下的线程栈信息及线程状态。一般cpu占用较高的话，可以使用这个命令进行排查。
+
+## 调优
+
+### 打印gc日志
+
+- https://blog.csdn.net/u012988901/article/details/100708349?spm=1001.2014.3001.5501
+
+要打印gc日志，需要设置一些jvm启动参数，这里我们正在开发的一个系统为基础，在idea里进行设置相关vm参数进行调优测试。
+
+java版本：
+```java
+➜  Documents java -version
+java version "1.8.0_201"
+Java(TM) SE Runtime Environment (build 1.8.0_201-b09)
+Java HotSpot(TM) 64-Bit Server VM (build 25.201-b09, mixed mode)
+```
+
+jvm参数：
+```java
+## 这里我们直接在项目的根目录输出gc日志
+-XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+```
+
+注意：这里我除了上面的三个-xx参数外，并没有设置其他的jvm参数了。
+
+![gc](./image/jvm/gc_print_options.jpg)
+
+### 分析gc日志
+
+- https://blog.csdn.net/u012988901/article/details/102791020
+
+参考这篇博客，我选用了GCViewer来帮助我分析gc情况。
+
+```java
+git  clone https://github.com/chewiebug/GCViewer.git
+
+cd GCViewer
+
+mvn clean package -Dmaven.test.skip=true
+```
+
+然后在target下有一个jar包，gcviewer-1.37-SNAPSHOT.jar，直接双击打开。然后加载刚刚生成的gc日志文件。
+![gcViewer](./image/jvm/gcViewer.jpg)
+
+
 
 
 
@@ -119,3 +167,4 @@ Heap dump file created
 
 - https://blog.csdn.net/u012988901
 - https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/toc.html
+- https://blog.csdn.net/u012988901/article/details/100708349?spm=1001.2014.3001.5501
