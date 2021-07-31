@@ -15,6 +15,7 @@
    * [调优](#调优)
       * [打印gc日志](#打印gc日志)
       * [分析gc日志](#分析gc日志)
+      * [ParallellelGC调优](#parallellelgc调优)
 
 hint：以下如无特殊说明都是针对jdk8而言
 
@@ -118,6 +119,10 @@ Heap dump file created
 
 ## 调优
 
+- https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/
+
+调优应该是有目标的调优，而不是乱调。最好是参照着上面的官方文档的建议指南进行。
+
 ### 打印gc日志
 
 - https://blog.csdn.net/u012988901/article/details/100708349?spm=1001.2014.3001.5501
@@ -157,7 +162,53 @@ mvn clean package -Dmaven.test.skip=true
 ```
 
 然后在target下有一个jar包，gcviewer-1.37-SNAPSHOT.jar，直接双击打开。然后加载刚刚生成的gc日志文件。
-![gcViewer](./image/jvm/gcViewer.jpg)
+![gcViewer](./image/jvm/gcViewer.png)
+
+从图右侧上可以看出，当前jvm的吞吐量（Throughout）还是很不错的，达到了99.4%，相当高了。关于吞吐量，可以参考下面两个参考链接：
+
+- https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/ergonomics.html#sthref13
+- https://li5jun.com/article/338.html
+
+简单来说，吞吐量就是假设总共有100s，99s用来给业务线程使用，1s用来给GC线程使用，那么吞吐量就是99%。
+
+顺便可以使用jinfo查看一下当前使用的垃圾收集器：
+
+```linux
+➜  learn git:(master) ✗ jinfo -flag UseParallelGC 61756
+-XX:+UseParallelGC
+```
+
+可以看到使用的是并行GC收集器。
+
+### ParallellelGC调优
+
+根据[官方文档](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/ergonomics.html#ergonomics)的【Behavior-Based Tuning】小节，我们知道对于并行收集器，有两个指标我们可以进行调优，一是吞吐量【`-XX:GCTimeRatio=<nnn>`，吞吐量=`1 / (1 + <nnn>)`】，一是最大的GC停顿时间【`-XX:MaxGCPauseMillis=<nnn>`，单位毫秒】。
+
+上一小节，我们知道JDK8默认使用ParallellelGC进行垃圾回收，现在我们试着调整一些参数。首先我们注意到其实我们的吞吐量已经很高了，不用怎么调，但是GC停顿时间还是比较久，最大达到了0.11734s，如下图所示：
+![parallelGC_tuning](./image/jvm/parallelGC_tuning.jpg)
+
+并且注意到因为metaspace导致了3次fullGC，我们先尝试配置metaspace大小消除这3个GC。注意到，metaspace大概占用了55MB的空间，我们尝试给他分配大一点的空间。
+![parallelGC_metaspace](./image/jvm/parallelGC_metaspace.jpg)
+
+配置JVM启动参数：
+```java
+-XX:MetaspaceSize=128m  -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+```
+再次使用GCviewer查看新的gc日志，如下所示；
+
+![parallelGC_metaspace_tuning](./image/jvm/parallelGC_metaspace_tuning.jpg)
+
+明显可以看到因为metaspace导致的fullGC没有了，并且最大停顿时间也下降到了0.02195s。
+
+我们尝试将最大停顿时间限制在10ms以内试试，使用jvm参数配置：
+```java
+-XX:MetaspaceSize=128m  -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+```
+GCviewer的日志分析显示如下：
+![parallelGC_maxPause_tuning](./image/jvm/parallelGC_maxPause_tuning.jpg)
+
+可以看到最大停顿时间，虽然下降到0.01351s，这也就是GC调优另外一个需要注意的点，我们在jvm启动参数里设置的指标，jvm只会尽力达到，而不能保证一定会达到。
+
 
 
 
