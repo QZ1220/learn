@@ -202,7 +202,7 @@ mvn clean package -Dmaven.test.skip=true
 
 我们尝试将最大停顿时间限制在10ms以内试试，使用jvm参数配置：
 ```java
--XX:MetaspaceSize=128m  -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+-XX:MetaspaceSize=128m -XX:MaxGCPauseMillis=10 -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
 ```
 GCviewer的日志分析显示如下：
 ![parallelGC_maxPause_tuning](./image/jvm/parallelGC_maxPause_tuning.jpg)
