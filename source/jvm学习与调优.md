@@ -16,6 +16,9 @@
       * [打印gc日志](#打印gc日志)
       * [分析gc日志](#分析gc日志)
       * [ParallellelGC调优](#parallellelgc调优)
+      * [CMS调优](#cms调优)
+         * [i-CMS](#i-cms)
+      * [G1调优](#g1调优)
 
 hint：以下如无特殊说明都是针对jdk8而言
 
@@ -248,6 +251,69 @@ gc日志解析结果如下：
 ```java
 -XX:+UseConcMarkSweepGC -Xmx1500m -Xms1500m -Xmn550m -XX:MaxGCPauseMillis=10 -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
 ```
+
+gc日志解析结果如下，从结果我们可以发现其实GC的最大停顿时间并没有明显的变小，这是为什么？
+![CMS_tuning_max_pause_time](./image/jvm/CMS_tuning_max_pause_time.jpg)
+
+
+查阅相关[文档](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/ergonomics.html#sthref11)，其中有一段原文如下：
+
+For the `parallel` collector, Java SE provides two garbage collection tuning parameters that are based on achieving a specified behavior of the application: `maximum pause time goal` and `application throughput goal`; see the section The Parallel Collector. (`These two options are not available in the other collectors.`) 
+
+说明`MaxGCPauseMillis`这个参数在CMS里没用！
+
+但是注意，在G1的文档里，这个参数又可以使用，原文在[这里](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/g1_gc_tuning.html#default_g1_gc)。：
+
+
+#### i-CMS
+
+- https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/cms.html#CJAGIIEJ
+
+这个`i`就是`incremental`，意思就是增量的进行垃圾回收，核心思想就是，在单核机器上为了避免CMS长时间占用CPU资源，GC的过程可以分为多次进行回收。不过这种情况在现如今的硬件环境下，已经比较少见了，这里不多做介绍。
+
+### G1调优
+
+- https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/g1_gc_tuning.html#g1_gc_tuning
+
+关于G1的介绍，可以参考之前的一篇[笔记](https://github.com/AudiVehicle/learn/blob/master/source/G1/G1.md)。
+
+这里我们重点关注G1的调优。
+
+首先启用G1，其他参数默认，查看一下性能。
+```java
+-XX:+UseG1GC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+```
+gc日志解析结果如下：
+![G1_tuning](./image/jvm/G1_tuning.jpg)
+
+可以看出，G1在默认参数情况下，性能已经非常不错了，最大停顿时间降低到了0.01562s。
+
+同时，注意到G1的GC有因为metaspace导致的。我们设置一下metaspace大小。
+
+```java
+-XX:+UseG1GC -XX:MetaspaceSize=256m  -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+```
+gc日志解析结果如下：
+
+![G1_tuning_metaspace](./image/jvm/G1_tuning_metaspace.jpg)
+
+这优化效果，也太好了吧。
+
+其实，如果是真是环境，调优到这一步，也就不需要再继续优化了，没有太大的提升空间。
+
+其他的参数调优可以参考[这里](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/g1_gc_tuning.html#default_g1_gc).
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
