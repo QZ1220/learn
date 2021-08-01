@@ -242,7 +242,7 @@ gc日志解析结果如下：
 -XX:+UseConcMarkSweepGC -Xmx1500m -Xms1500m -Xmn550m -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
 ```
 gc日志解析结果如下：
-![CMS_tuning_xmn](./image/jvm/CMS_tuning_xmn.png)
+![CMS_tuning_xmn](./image/jvm/CMS_tuning_xmn.jpg)
 
 这张图和上面的图对比就可以发现，young区的GC明显下降，old区的GC也有一定程度的下降，且吞吐量保持在97.51%的高位，但是GC最大停顿时间达到了0.06917s，我们现在尝试将这个时间调整小一点。
 ```java
