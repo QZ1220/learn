@@ -137,6 +137,11 @@ Java(TM) SE Runtime Environment (build 1.8.0_201-b09)
 Java HotSpot(TM) 64-Bit Server VM (build 25.201-b09, mixed mode)
 ```
 
+CPU:
+```java
+intel i5 四核
+```
+
 jvm参数：
 ```java
 ## 这里我们直接在项目的根目录输出gc日志
@@ -209,6 +214,40 @@ GCviewer的日志分析显示如下：
 
 可以看到最大停顿时间，虽然下降到0.01351s，这也就是GC调优另外一个需要注意的点，我们在jvm启动参数里设置的指标，jvm只会尽力达到，而不能保证一定会达到。
 
+
+### CMS调优
+
+- https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/cms.html
+
+首先插一句，CMS从JDK9开始已经被标记为废弃了，推荐使用的是G1或者ZGC（JDK11）。
+
+CMS和后面要介绍的G1是并发收集器（Concurrent），前面说的ParallellelGC是并行收集器。
+
+- 并行：多个GC线程可以一起进行垃圾回收，只是GC线程垃圾收集期间，业务线程是需要暂停的
+- 并发：多个GC线程可以一起进行垃圾回收，且得益于多核心CPU的优势，在GC期间，业务线程是可以使用剩余的CPU资源的，二者可以同时执行
+
+使用参数`-XX:+UseConcMarkSweepGC`即可指定使用CMS收集器。
+
+还是使用同样的应用，我们使用的jvm参数如下：
+```java
+-XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+```
+CMS_tuning.png
+
+gc日志解析结果如下：
+![CMS_tuning](./image/jvm/CMS_tuning.png)
+
+从图上可以看出，除了young区GC频繁外，old区的GC也是相当频繁，我们尝试调大young区和old区的大小。从图上的结果得知，young区占用77MB左右，且达到了100%，结合签名parallelGC的图，young区大概需要500m+的空间。根据JVM官方建议的3/8原则，设置young区5500MB，old区1500MB。使用的jvm配置参数如下：
+```java
+-XX:+UseConcMarkSweepGC -Xmx1500m -Xms1500m -Xmn550m -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+```
+gc日志解析结果如下：
+![CMS_tuning_xmn](./image/jvm/CMS_tuning_xmn.png)
+
+这张图和上面的图对比就可以发现，young区的GC明显下降，old区的GC也有一定程度的下降，且吞吐量保持在97.51%的高位，但是GC最大停顿时间达到了0.06917s，我们现在尝试将这个时间调整小一点。
+```java
+-XX:+UseConcMarkSweepGC -Xmx1500m -Xms1500m -Xmn550m -XX:MaxGCPauseMillis=10 -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log 
+```
 
 
 
