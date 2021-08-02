@@ -155,9 +155,12 @@ jvm参数：
 
 ![gc](./image/jvm/gc_print_options.jpg)
 
+-XX:-+DisableExplicitGC参数可以禁用java代码显式调用System.gc()导致的gc。
+
 ### 分析gc日志
 
 - https://blog.csdn.net/u012988901/article/details/102791020
+- https://blog.csdn.net/u012988901/article/details/100708349?spm=1001.2014.3001.5501
 
 参考这篇博客，我选用了GCViewer来帮助我分析gc情况。
 
@@ -299,7 +302,7 @@ gc日志解析结果如下：
 
 这优化效果，也太好了吧。
 
-其实，如果是真是环境，调优到这一步，也就不需要再继续优化了，没有太大的提升空间。
+其实，如果是正式环境，调优到这一步，也就不需要再继续优化了，没有太大的提升空间。
 
 其他的参数调优可以参考[这里](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/g1_gc_tuning.html#default_g1_gc).
 
@@ -314,7 +317,9 @@ gc日志解析结果如下：
 
 
 
+java虚拟机规范：
 
+- https://docs.oracle.com/javase/specs/jvms/se8/html/index.html
 
 
 
@@ -323,4 +328,3 @@ gc日志解析结果如下：
 
 - https://blog.csdn.net/u012988901
 - https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/toc.html
-- https://blog.csdn.net/u012988901/article/details/100708349?spm=1001.2014.3001.5501
