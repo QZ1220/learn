@@ -1,51 +1,34 @@
-﻿# 区块链
+﻿# prime工作总结
 
 标签（空格分隔）： 区块链
 
 ---
 
-一些参考链接
-------
+* [prime工作总结](#prime工作总结)
+   * [raft算法介绍](#raft算法介绍)
+   * [区块链简介](#区块链简介)
+   * [RS总结](#rs总结)
+   * [VN总结](#vn总结)
+   * [synchronizer总结](#synchronizer总结)
+   * [rs_failover总结](#rs_failover总结)
+   * [prime slave总结](#prime-slave总结)
+   * [代码技巧](#代码技巧)
+   * [prime slave多币种支持改造](#prime-slave多币种支持改造)
+
+## raft算法介绍
+
+记录在另外一篇[笔记](https://github.com/AudiVehicle/learn/blob/master/source/atomix%E5%88%86%E4%BA%AB/raft%E5%88%86%E4%BA%AB.md)。
+
+## 区块链简介
+
 简单来讲，区块链是一个分布式的记账本，核心在于去中心化以及可信任链。
 区块链技术的典型应用场景就是支付和清算，可以解决不同主体之间的信任问题。
+
 区块链采用密码学的方法来保证已有数据的不可篡改性，主要包括密码学**哈希**函数和**非对称加密**（有公钥和私钥）。
 
+## RS总结
 
-
-
-
-runtime_sandbox_common_module
-vitual_net_design
-slave
-RS failover
-
-项目文档的一些疑问
----------
-如何保证实时交易？
-
-针对primeledger_arch_new.xml文件
- 1. 为什么需要synchronizer？
- 2. prime core模块的作用是为了往区块链同步交易信息？
- 3. Virtual Network的作用是实现投票决策？为什么prime core也要进行投票？
-
-针对runtime_sandbox_common_module.xml文件
-
- 1. 发起投票时，什么情况是需要入链的？什么是不需要的？
- 2. 处处都有幂等性判断？
- 3. primeslave？
- 4. 
- 
-
-针对vitual_net_design.xml文件
-
- 1. rs组件也有投票的过程吗？
- 2. 
-
- 
-
-RS总结
---
-RS主要负责和用户AI进行交互，接受AI的请求，以及将处理请求的结果反馈给AI。
+RS主要负责和用户Api进行交互，接受Api的请求，以及将处理请求的结果反馈给AI。
 
 RS可以有多个，相互之间独立运行。
 
@@ -70,8 +53,8 @@ VN投票结果回调接受流程和VN投票结果回调处理流程（类似于�
 
 刚刚的代码在哪里看到的？
 
-VN总结
-----
+## VN总结
+
 VN可以分为三层。分别是VN SERVICE、VN BIZ、VN INTEGRATION。三层各自对应一些pojo。
 
 VN SERVICE负责给外部系统调用，包括RS投票和SLAVE的回调。
@@ -95,46 +78,24 @@ syncVote(RSVoteParam rsVoteParam)这个方法不太懂
 LOGGER.error("回调处理第[{}]个子任务时发生异常", i);这里看不懂
 
 
-synchronizer总结
--------------
+## synchronizer总结
 synchronizer主要完成入链数据的打包分发，将instructions打包成数组的形式，然后再转发给下层的prime slave。
 
 
-rs_failover总结
--------------
+## rs_failover总结
+
 这个模块主要完成rs节点的上线以及下线处理，伴随着这个处理过程会有数据的同步处理过程在其中。
 下线过程分为正常下线和异常下线。
 
- - 问题
-上线部分
-为什么RS1上线需要停止RSx？是为了让RS1和RSx的数据进行同步吗？
-为什么RS1和RSx做数据同步的时候需要pause VN模块？是为了保证在RS1和RSx同步的时候没有新的数据从VN回调过来吗？
-下线部分
-为什么异常下线RS1的时候要把RSx VN pause掉？
-为什么正常下线RS1的时候不用把VN pause掉？
+## prime slave总结
 
-prime slave总结
--------------
 该模块主要完成往区块链上写入数据，完成AI发出的交易指令，完成用户账户之间的交易。
 
 首先监听package的变换，如果package有变化就放入本地队列，并尝试进行校验。校验前，需要从数据库取出校验当前package所需的数据。校验时，针对package中的指令单起一个线程进行处理。校验需要多个节点（>3）同时参与，各个节点汇总校验结果到leader进行汇总投票。然后各个节点再进行后续的处理，比如具体指令的执行，然后就是持久化数据，持久化的结果也需要进行汇总投票，当票数超过某一个值N时，开始进行回调处理，也就是通知VN，RS指令执行成功。
 
 
 
- - 问题
- 这个模块对应的代码是哪一部分？
-为什么这个模块也需要进行投票？为了保证交易都是由诚实节点完成的吗?
-
-
- public class PackageMonitor extends AbstractMonitor implements ILeaderNodeServiceSwitch {
- 
- 
-
-slave模块本地调试流程
--------------
-
- 
-
+##slave模块本地调试流程
  1. 启动zookeeper
  2. 启动primeslave的三个节点
  3. 除第一个启动的节点外，后两个节点进行join操作
@@ -143,16 +104,7 @@ slave模块本地调试流程
 
 
 
-ucf-coin总结
-----------
-
- 1. 普通用户和发行用户有什么区别？
- 2. 
-
-
-
-代码技巧
-----
+## 代码技巧
 
  1. 对于入参的校验，可以使用google的guava包里的Preconditions类提供的checkArgument方法，例如下面的代码：
 ```java
@@ -161,7 +113,7 @@ Preconditions.checkArgument(timeoutMS > 0, "timeoutMS must > 0");
  2. 对于多个参数的校验，或者是对实体类的参数校验
 ```java
 BeanValidator.validate(vnRequestParam).failThrow();
-```
+
  
  
 MNG运行下，VNCallbackProcessService的运行状态必须为=PAUSED or STOPPED
@@ -171,38 +123,29 @@ MNG运行下，VNCallbackProcessService的运行状态必须为=PAUSED or STOPPE
                 
                 
                 asyncRequestVNToTerminate
+```
                 
                 
 
-prime slave多币种支持改造
--------------
+## prime slave多币种支持改造
+
 问题：
-1、冻结金额部分
-2、冻结金额与总金额的显示（即冻结的金额是否会从总金额中扣除）
-3、开户、交易时对于accountId的验证
-4、开户的时候对于冻结金额的支持
-5、accountSnapshotMap是一直存在内存中的（不查询数据库）
+1. 冻结金额部分
+2. 冻结金额与总金额的显示（即冻结的金额是否会从总金额中扣除）
+3. 开户、交易时对于accountId的验证
+4. 开户的时候对于冻结金额的支持
+5. accountSnapshotMap是一直存在内存中的（不查询数据库）
 
 需要修改的地方：
 同一个用户具有一个唯一的address，这个唯一的address可以对应多个accountId，一个accountId+currency组合标明当前address下的一个币种。
-```flow
-st=>start: Start
-op=>operation: Your Operation
-cond=>condition: Yes or No?
-e=>end
-
-st->op->cond
-cond(yes)->e
-cond(no)->op
-```
 
 开户：
-1、account表增加currency（币种）字段
-2、开户时，除了设置account_id、amount（如果有的话）以外，还要设置currency字段
+1. account表增加currency（币种）字段
+2. 开户时，除了设置account_id、amount（如果有的话）以外，还要设置currency字段
 
 交易：
-1、交易隔离（不同币种之间不能直接转币）
-2、余额有效性校验
+1. 交易隔离（不同币种之间不能直接转币）
+2. 余额有效性校验
 
 
 ```java
