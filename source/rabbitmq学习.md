@@ -21,12 +21,14 @@
       * [mirror模式](#mirror模式)
          * [原理简介](#原理简介)
          * [选主](#选主)
-         * [版本信息](#版本信息)
-         * [mirror队列搭建](#mirror队列搭建)
+         * [mirror架构搭建](#mirror架构搭建)
          * [HaProxy搭建](#haproxy搭建)
          * [KeepAlived搭建](#keepalived搭建)
+      * [Quorum Queues](#quorum-queues)
+         * [简介](#简介)
+         * [适用场景](#适用场景)
    * [rabbitmq的federation插件](#rabbitmq的federation插件)
-      * [简介](#简介)
+      * [简介](#简介-1)
       * [实际搭建](#实际搭建)
 
 ## 环境信息
@@ -680,6 +682,8 @@ public class RabbitmqReceiver {
 
 这种方案虽然对于消息的可靠性可以保证，但是由于消息在每个节点都进行同步，大大消耗了集群带宽，并且在[官方文档](https://www.rabbitmq.com/ha.html)中这种方案也标明了后续会被废弃掉（Important: mirroring of classic queues will be removed in a future version of RabbitMQ. Consider using quorum queues or a non-replicated classic queue instead.）。
 
+2021年08月07日21:06:27，这里更正一下，其实不是镜像队列这种高可用架构要被废弃，而是`classic`类型的队列要被废弃，改用`quorum`类型的队列，这种依然可以做镜像队列。
+
 每个镜像队列都有一个leader replica和一个或者多个mirrors (replicas)。如果持有leader replica的节点宕机，那么最老的且完成数据同步的节点将会被选举成为新的leader。当然，未同步的节点也可以成为leader，这取决于集群参数配置。
 
 镜像队列在集群中复制多少份是合理的？官方文档给出的是超过半数的节点持有镜像队列副本即可。比如2/3 or 3/5等。这个可以通过设置policy参数`ha-mode`和`ha-params`实现：
@@ -714,17 +718,18 @@ If the leader fails, then one of the mirrors will be promoted to leader as follo
 6. Messages published by clients using publisher confirms will still be confirmed even if the leader (or any mirrors) fail between the message being published and a confirmation received by the publisher. From the point of view of the publisher, publishing to a mirrored queue is no different from publishing to a non-mirrored one.
 
 
-Flow Control
+#### mirror架构搭建
 
 这里使用docker搭建一下上图列出的镜像集群架构。
 
-#### 版本信息
+环境信息
+
 - docker:18.09.2
 - rabbitmq:3.8.19
 - HaProxy:2.2.15
 - KeepAlived:2.0.20
 
-#### mirror队列搭建
+
 
 这里为了方便使用docker-compose模式，新建一个名为`rabbitmq-docker-compose.yml`的文件，内容如下：
 ```yaml
@@ -974,6 +979,18 @@ virtual_server 192.168.1.90 3306 {
 ```
 
 ### Quorum Queues
+
+#### 简介
+
+[Quorum Queues](https://www.rabbitmq.com/quorum-queues.html)在官方文档里是这么定义的：它是是新型的队列模式，基于[raft](https://raft.github.io/)一致性协议，实现了消息的持久化，FIFO模式的消息复制。Quorum队列在rabbitmq 3.8.0才开始支持，它将数据安全作为最首要目标。
+
+Quorum类型的队列必须持久化，且需要做集群备份。Quorum queues by design are replicated and durable, therefore the exclusive property makes no sense in their context. Therefore quorum queues cannot be exclusive.
+
+#### 适用场景
+
+由于Quorum类型的队列必须要持久化且需要集群复制，因此它的用途一般是一些重要的数据处理，比如支付系统的账单数据、投票系统等对数据可靠性要求较高的场景。
+
+相比之下，对于要求低延迟，容忍数据丢失的场景则不要使用Quorum队列。
 
 ## rabbitmq的federation插件
 
