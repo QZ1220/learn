@@ -55,6 +55,8 @@ netty学习
 
 [leetcode解题](https://github.com/AudiVehicle/algorithm)
 
+[raft一致性算法](https://github.com/AudiVehicle/learn/blob/master/source/atomix%E5%88%86%E4%BA%AB/raft%E5%88%86%E4%BA%AB.md)
+
 elk
 -----
 
