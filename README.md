@@ -44,7 +44,7 @@ netty学习
 工作总结
 ----
 
-[prime](https://github.com/Audi-A7/learn/blob/master/source/%E8%B4%A8%E6%95%B0%E9%87%91%E6%9C%8D%E9%A1%B9%E7%9B%AE%E6%80%BB%E7%BB%93.md)
+[prime](https://github.com/AudiVehicle/learn/blob/master/source/prime%E5%B7%A5%E4%BD%9C%E6%80%BB%E7%BB%93.md)
 
 [tap4fun](https://github.com/Audi-A7/learn/blob/master/source/%E5%B7%A5%E4%BD%9C%E6%80%BB%E7%BB%93.md)
 
@@ -54,6 +54,8 @@ netty学习
 [数据结构与算法](https://github.com/Audi-A7/learn/blob/master/source/%E7%AE%97%E6%B3%95.md)
 
 [leetcode解题](https://github.com/AudiVehicle/algorithm)
+
+[raft一致性算法](https://github.com/AudiVehicle/learn/blob/master/source/atomix%E5%88%86%E4%BA%AB/raft%E5%88%86%E4%BA%AB.md)
 
 elk
 -----
