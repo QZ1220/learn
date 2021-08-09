@@ -53,7 +53,7 @@ netty学习
 
 [数据结构与算法](https://github.com/Audi-A7/learn/blob/master/source/%E7%AE%97%E6%B3%95.md)
 
-[leetcode解题](https://github.com/AudiVehicle/algorithm)
+[leetcode题解](https://github.com/AudiVehicle/algorithm)
 
 [raft一致性算法](https://github.com/AudiVehicle/learn/blob/master/source/atomix%E5%88%86%E4%BA%AB/raft%E5%88%86%E4%BA%AB.md)
 
