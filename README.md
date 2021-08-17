@@ -26,10 +26,19 @@ jvm学习与调优
 [mysql相关学习](https://github.com/AudiVehicle/learn/blob/master/source/mysql%E5%AD%A6%E4%B9%A0.md)
 
 
-消息队列学习
+算法
+---
+
+[数据结构与算法](https://github.com/Audi-A7/learn/blob/master/source/%E7%AE%97%E6%B3%95.md)
+
+[leetcode题解](https://github.com/AudiVehicle/algorithm)
+
+[raft一致性算法](https://github.com/AudiVehicle/learn/blob/master/source/atomix%E5%88%86%E4%BA%AB/raft%E5%88%86%E4%BA%AB.md)
+
+spring源码阅读
 ------
 
-[rabbitmq学习](https://github.com/AudiVehicle/learn/blob/master/source/rabbitmq%E5%AD%A6%E4%B9%A0.md)
+[spring源码阅读](https://github.com/AudiVehicle/learn/blob/master/source/Spring%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB.md)
 
 redis学习
 -------
@@ -41,6 +50,11 @@ netty学习
 
 [netty](https://github.com/AudiVehicle/learn/blob/master/source/netty%E5%AD%A6%E4%B9%A0.md)
 
+消息队列学习
+------
+
+[rabbitmq学习](https://github.com/AudiVehicle/learn/blob/master/source/rabbitmq%E5%AD%A6%E4%B9%A0.md)
+
 工作总结
 ----
 
@@ -48,14 +62,6 @@ netty学习
 
 [tap4fun](https://github.com/Audi-A7/learn/blob/master/source/%E5%B7%A5%E4%BD%9C%E6%80%BB%E7%BB%93.md)
 
-算法
----
-
-[数据结构与算法](https://github.com/Audi-A7/learn/blob/master/source/%E7%AE%97%E6%B3%95.md)
-
-[leetcode题解](https://github.com/AudiVehicle/algorithm)
-
-[raft一致性算法](https://github.com/AudiVehicle/learn/blob/master/source/atomix%E5%88%86%E4%BA%AB/raft%E5%88%86%E4%BA%AB.md)
 
 elk
 -----
