@@ -5,34 +5,15 @@
 
 本文主要针对springBoot、springCloud的相关组件的源码阅读及个人理解，参考了很多《Spring Cloud微服务实战》一书的源码分析。
 
-参考链接
-----
+## 相关版本
 
- 1. https://blog.csdn.net/woshilijiuyi/article/details/82219585
- 2. https://blog.csdn.net/qq_35119422/article/details/81559410
-
-版本
---
-
- - springboot  2.1.4.RELEASE
- - springcloud Greenwich.SR1
-
- 
-目录
---
-
- 1. springboot启动过程
- 2. springboot的starter
- 3. 自定义starter
- 4. eureka源码
- 5. ribbon源码
- 6. hystrix源码
- 7. feign源码
+- springboot  2.1.4.RELEASE
+- springcloud Greenwich.SR1
 
 
-eureka源码分析
-----------
+## eureka源码分析
 
+### 注册
  - 各个服务组件是如何将自己注册到eureka上的呢？
 
 简单来说就是想eureka发送REST请求将自己注册到Eureka Server上的。
@@ -50,6 +31,7 @@ spring.instance.lease-expiration-duration-in-seconds=90
 ```
 前者定义了服务多久eureka通信一次，后者告诉eureka多久将无心跳的服务踢下线。上面的30和90秒都是默认时间，也就是说，不手动配置，这两个参数也是生效的，只不过取默认值。
 
+### 对外提供服务
  - 服务消费者如何获取eureka上注册的服务提供者呢？
 
  消费者会发送REST请求给eureka，以获取eureka上注册的服务清单（可能不仅仅只包含服务提供者）。处于性能考虑，eureka会维护（缓存）一份只读的服务清单来返回给客户端。该缓存清单没隔30s会更新一次。如果希望修改这个时间，可以使用如下的配置：
@@ -59,14 +41,15 @@ spring.instance.lease-expiration-duration-in-seconds=90
  消费者获取到服务清单以后（起止包含服务提供者的元数据信息），可以根据自己的实际需要进行调用，Ribbon默认采用轮训的方式进行调用，从而实现负载均衡。
  
  
-
+### 下线
  - 服务下线
 
 正常的服务下线时，会给eureka发送下线的Rest请求，告诉eureka将自己从服务列表剔除。
 
 但是，如果服务异常关闭了，是不会往eureka发送下线请求的，eureka会每60秒检测一次是否有超时时间超过90秒的无心跳服务，如果有就将其从服务列表清除。
 
- - 源码分析
+
+### 源码分析
 
 一般配置一个eureka服务，我们会做两件事情：
 
@@ -77,9 +60,9 @@ spring.instance.lease-expiration-duration-in-seconds=90
 
 @EnableDiscoveryClient主要用来开启DiscoveryClient实例，通过梳理，可以得到如下所示的依赖关系图：
 
-![此处输入图片的描述][1]
+![eurekaClient](./image/spring/eurekaClient.png)
 
-真正实现发现服务的是com.netflix.discovery.DiscoveryClient类，该类声明及注释如下：
+真正实现发现服务的是`com.netflix.discovery.DiscoveryClient`类，该类声明及注释如下：
 ```java
 /**
  * The class that is instrumental for interactions with <tt>Eureka Server</tt>.
@@ -188,11 +171,11 @@ public class DiscoveryClient implements EurekaClient {
         }
     }
 ```
-上面的if (clientConfig.shouldFetchRegistry())就是判断是否需要启动服务列表获取的定时任务，if (clientConfig.shouldRegisterWithEureka())就是判断是否需要将服务注册到eureka上去。定时任务的执行周期都可以配置文件进行配置，否则取默认值。
+上面的`if (clientConfig.shouldFetchRegistry())`就是判断是否需要启动服务列表获取的定时任务，if (clientConfig.shouldRegisterWithEureka())就是判断是否需要将服务注册到eureka上去。定时任务的执行周期都可以配置文件进行配置，否则取默认值。
 
  
  在if (clientConfig.shouldRegisterWithEureka())分支内创建了一个InstanceInfoReplicator对象，这个对象实现了Runnable接口，通过查看其run方法：
- ```java
+```java
  public void run() {
         try {
             discoveryClient.refreshInstanceInfo();
@@ -209,9 +192,9 @@ public class DiscoveryClient implements EurekaClient {
             scheduledPeriodicRef.set(next);
         }
     }
- ```
+```
  它内部的register方法就是做注册使用的，同时com.netflix.appinfo.InstanceInfo保存了注册服务的元信息。
- ```java
+```java
  /**
      * Register with the eureka service by making the appropriate REST call.
      */
@@ -229,12 +212,12 @@ public class DiscoveryClient implements EurekaClient {
         }
         return httpResponse.getStatusCode() == Status.NO_CONTENT.getStatusCode();
     }
- ```
+```
  
  **服务获取源码分析**
  
  在com.netflix.discovery.DiscoveryClient类内部的initScheduledTasks方法内部还有一个if判断主要是启动服务获取的定时任务的，源码如下：
- ```java
+```java
  if (clientConfig.shouldFetchRegistry()) {
             // registry cache refresh timer
             int registryFetchIntervalSeconds = clientConfig.getRegistryFetchIntervalSeconds();
@@ -251,10 +234,10 @@ public class DiscoveryClient implements EurekaClient {
                     ),
                     registryFetchIntervalSeconds, TimeUnit.SECONDS);
         }
- ```
+```
  
  通过CacheRefreshThread类的run方法可以知道他其实内部又调用了refreshRegistry方法：
- ```java
+```java
      /**
      * The task that fetches the registry information at specified intervals.
      *
@@ -264,7 +247,7 @@ public class DiscoveryClient implements EurekaClient {
             refreshRegistry();
         }
     }
- ```
+```
  refreshRegistry方法内部会做一个判断，以决定是否全量拉取服务注册信息还是只拉取更新的服务注册信息。
  
  上面if判断的结果会决定remoteRegionsModified标志位的值，真正的服务获取是在fetchRegistry方法内完成的。
@@ -503,14 +486,13 @@ handleRegistration的源码如下：
 注册的过程中使用了读锁，可以不影响服务列表的获取，但是会阻塞其他的并发写请求。
 
 
-Ribbon源码分析
-----------
+## Ribbon源码分析
 
 ribbon主要是作为一个服务负载均衡调度，以及服务调用的工具。
 
 ribbon调用工具实现了常用的GET、POST、PUT、DELETE等常用的REST风格的api接口。这个相对简单，下面我们探究一下他是如何实现负载均衡的？？
 
- - @LoadBalanced注解
+### @LoadBalanced注解
 
 一般我们会使用该注解使得应用带有负载均衡的能力，那他底层的原理呢？通过搜索LoadBalancerClient，可以发现他是一个org.springframework.cloud.client.loadbalancer下的接口。他有三个方法，如下所示：
 ```java
@@ -566,7 +548,7 @@ ribbon调用工具实现了常用的GET、POST、PUT、DELETE等常用的REST风
  - reconstructURI：构建真实的服务调用地址，例如http://myservice/path/to/service，而不是ip:port的形式
 
 通过整理LoadBalancerClient接口的依赖关系，得到如下图所示依赖关系：
-![此处输入图片的描述][2]
+![ribbon](./image/spring/ribbon.png)
 
 从上图可以看出，LoadBalancerAutoConfiguration较为关键，从名字上我们也可以看出他是一个实现负载均衡的自动化配置的类，源码如下：
 ```java
@@ -760,11 +742,11 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
  ribbon会定时ping（默认10s）服务列表里的服务。
  
  
-**Ribbon的负载均衡策略**
+### Ribbon的负载均衡策略
  
  ribbon本身有比较多的策略，基本都集成自IRule接口，如下图所示：
  
-  ![此处输入图片的描述][3]
+  ![IRule](./image/spring/IRule.png)
  
  IRule作为顶层的接口，其源码如下：
  ```java
@@ -791,7 +773,7 @@ public interface IRule{
     
     public ILoadBalancer getLoadBalancer();    
 }
- ```
+```
  
  从图上也可以看出，大概有轮询，随机、权重、重试、基于Zone、预判等负载策略。
  
@@ -799,12 +781,13 @@ public interface IRule{
 
  
 
-Hystrix源码分析
----------
+## Hystrix源码分析
 
 从网上找了一张图，这张图对于hystrix的断路过程解释的挺清晰的，如下所示（原图地址：https://pbs.twimg.com/media/DRAsk2fW0AAngaX.jpg）：
 
-![此处输入图片的描述][4]
+![Hystrix](./image/spring/Hystrix.jpg)
+
+### 命令模式
 
 由于Hystrix内使用了命令模式，在开始讲解之前我们简单认识一下命令模式（https://zhuanlan.zhihu.com/p/56949325）：
 
@@ -921,9 +904,7 @@ Process finished with exit code 0
 
 命令模式的使用场景如下：
 
-![此处输入图片的描述][5]
-
-
+![Command](./image/spring/Command.png)
 
 按图中的数字编号顺序，一一解释如下：
 
@@ -1309,7 +1290,7 @@ Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核�
 8. **【fallback】**   也就是【服务降级】，当命令不能正常被执行的时候，都会转而执行fallback的逻辑。
 9. **【返回成功的响应】**   当Hystrix命令执行成功以后，它会将处理结果直接返回或是以Observable对象的形式返回。
 
-![此处输入图片的描述][6]
+![hystrix-return-flow](./image/spring/hystrix-return-flow.png)
 
  - toObservable()：返回最原始的Observable，必须通过订阅它，才会真正触发命令的执行流程；
  - observe()：在toObservable()产生原始的Observable对象之后立即订阅它，让命令能够马上开始异步执行，并返回一个Observable对象。当调用它的subscribe时，将重新产生结果并通知到订阅者；
@@ -1318,9 +1299,9 @@ Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核�
 
 以上是Command的执行过程，下面看一下断路器的具体内容。
 
-下图出自https://github.com/alexandregama/hystrix-book
+下图出自 https://github.com/alexandregama/hystrix-book
 
-![此处输入图片的描述][7]
+![circuit-breaker-1280](.//image/spring/circuit-breaker-1280.png)
 
 HystrixCircuitBreaker源码位于com.netflix.hystrix.HystrixCircuitBreaker下，源码如下：
 ```java
@@ -1661,15 +1642,15 @@ ll
  4. AtomicReference<Status> status：断路器状态引用，默认为CLOSED闭合状态。
  5.AtomicReference<Subscription> activeSubscription：被激活的订阅，默认为空
 
-**Hystrix线程池隔离**
+### Hystrix线程池隔离
 
 https://github.com/alexandregama/hystrix-book
 
 hystrix使用线程池隔离的技术（舱壁模式），来避免依赖服务之间相互影响。Hystrix uses separate, per-dependency thread pools as a way of constraining any given dependency so latency on the underlying executions will saturate the available threads only in that pool.
 
-![此处输入图片的描述][8]
+![request-example-with-latency-1280](./image/spring/request-example-with-latency-1280.png)
 
-![此处输入图片的描述][9]
+![isolation-options-1280](./image/spring/isolation-options-1280.png)
 
 关于使用信号量替代线程池（主要是为了性能考虑），官方有如下解释：
 
@@ -1683,14 +1664,14 @@ hystrix使用线程池隔离的技术（舱壁模式），来避免依赖服务�
 
 通过设置execution.isolation.strategy=SEMAPHORE时，Hystrix会使用信号量替代线程池来控制依赖服务的并发。
 
-**请求合并**
+### 请求合并
 
 Hystrix会将一段时间以内的请求（默认10ms）打包一起发送，从而提高并发效率。
 
-![此处输入图片的描述][10]
+![collapser-1280](./image/spring/collapser-1280.png)
 
 
-**Hystrix状态转换**
+### Hystrix状态转换
 
  1. https://blog.csdn.net/qq_44209563/article/details/104697221?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param
 
@@ -1703,8 +1684,7 @@ Hystrix一般存在open、closed、half-open三个状态，默认情况下hystri
 **half-open->closed**: 当熔断器状态为half-open,这时候服务调用方调用服务接口时候，就可以发起远程调用而不再使用本地降级接口，如果发起远程调用成功，则重新设置熔断器状态为closed状态。
  
 
-feign源码分析
--------
+## feign源码分析
 feign调用的时候，如果参数使用@RequestParam或者@RequestHeader注解的话，那么**记得**要写上**value**属性，否则无法正确绑定参数抛出IllegalStateException。
 ```java
 @ApiParam("操作者id") @RequestHeader(name = "user_id") String userId
@@ -1726,26 +1706,9 @@ ribbon:
 
 feign组件，默认会引入Ribbon和Hystrix组件。默认情况下，feign会将所有feign客户端的方法都封装到Hystrix的命令中进行服务保护。
 
-**feign的服务降级**
+### feign的服务降级
 
 
 
-spring cloud config源码分析
------------------------
+## spring cloud config源码分析
 该项目主要为了实现配置的动态配置及更新。
- 
- 
- 
- 
-
-
-  [1]: https://github.com/Audi-A7/learn/blob/master/image/spring/eurekaClient.png?raw=true
-  [2]: https://github.com/Audi-A7/learn/blob/master/image/spring/ribbon.png?raw=true
-  [3]: https://github.com/Audi-A7/learn/blob/master/image/spring/IRule.png?raw=true
-  [4]: https://github.com/Audi-A7/learn/blob/master/image/spring/Hystrix.jpg?raw=true
-  [5]: https://github.com/Audi-A7/learn/blob/master/image/spring/Command.png?raw=true
-  [6]: https://github.com/Audi-A7/learn/blob/master/image/spring/hystrix-return-flow.png?raw=true
-  [7]: https://github.com/Audi-A7/learn/blob/master/image/spring/circuit-breaker-1280.png?raw=true
-  [8]: https://github.com/Audi-A7/learn/blob/master/image/spring/request-example-with-latency-1280.png?raw=true
-  [9]: https://github.com/Audi-A7/learn/blob/master/image/spring/isolation-options-1280.png?raw=true
-  [10]: https://github.com/Audi-A7/learn/blob/master/image/spring/collapser-1280.png?raw=true
