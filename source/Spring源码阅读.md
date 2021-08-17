@@ -524,7 +524,9 @@ ribbon调用工具实现了常用的GET、POST、PUT、DELETE等常用的REST风
 
 ### @LoadBalanced注解
 
-一般我们会使用该注解使得应用带有负载均衡的能力，那他底层的原理呢？通过搜索LoadBalancerClient，可以发现他是一个org.springframework.cloud.client.loadbalancer下的接口。他有三个方法，如下所示：
+一般我们会使用该注解使得应用带有负载均衡的能力，那他底层的原理呢？
+
+通过搜索LoadBalancerClient，可以发现他是一个org.springframework.cloud.client.loadbalancer下的接口。他有三个方法，如下所示：
 ```java
 	/**
 	 * execute request using a ServiceInstance from the LoadBalancer for the specified
@@ -575,12 +577,12 @@ ribbon调用工具实现了常用的GET、POST、PUT、DELETE等常用的REST风
 
  - choose：为服务的调用方选择一个合适的服务提供方
  - execute：执行具体的服务调用
- - reconstructURI：构建真实的服务调用地址，例如http://myservice/path/to/service，而不是ip:port的形式
+ - reconstructURI：构建真实的服务调用地址，例如`http://myservice/path/to/service`，而不是`ip:port`的形式
 
 通过整理LoadBalancerClient接口的依赖关系，得到如下图所示依赖关系：
 ![ribbon](./image/spring/ribbon.png)
 
-从上图可以看出，LoadBalancerAutoConfiguration较为关键，从名字上我们也可以看出他是一个实现负载均衡的自动化配置的类，源码如下：
+从上图可以看出，`LoadBalancerAutoConfiguration`较为关键，从名字上我们也可以看出他是一个实现负载均衡的自动化配置的类，源码如下：
 ```java
 package org.springframework.cloud.client.loadbalancer;
 
@@ -710,7 +712,7 @@ public class LoadBalancerAutoConfiguration {
  - @ConditionalOnClass(RestTemplate.class)   RestTemplate类必须被加载
  - @ConditionalOnBean(LoadBalancerClient.class)  在spring的bean实例工厂中要有LoadBalancerClient这个bean
 
-改自动化配置类，主要完成了三件事情：
+该自动化配置类，主要完成了三件事情：
 
  1. 创建一个LoadBalancerInterceptor的bean，用于实现拦截客户端发起的请求
  2. 创建一个RestTemplateCustomizer用于给RestTemplate加上LoadBalancerInterceptor拦截器
@@ -806,6 +808,73 @@ public interface IRule{
 ```
  
  从图上也可以看出，大概有轮询，随机、权重、重试、基于Zone、预判等负载策略。
+ 
+从`BaseLoadBalancer`类可以知道Ribbon默认的rule就是`RoundRobinRule`
+```java
+private final static IRule DEFAULT_RULE = new RoundRobinRule();
+```
+
+查看RoundRobinRule的源码中的`choose`方法：
+```java
+    public Server choose(ILoadBalancer lb, Object key) {
+        if (lb == null) {
+            log.warn("no load balancer");
+            return null;
+        }
+
+        Server server = null;
+        int count = 0;
+        while (server == null && count++ < 10) {
+            List<Server> reachableServers = lb.getReachableServers();
+            List<Server> allServers = lb.getAllServers();
+            int upCount = reachableServers.size();
+            int serverCount = allServers.size();
+
+            if ((upCount == 0) || (serverCount == 0)) {
+                log.warn("No up servers available from load balancer: " + lb);
+                return null;
+            }
+
+            int nextServerIndex = incrementAndGetModulo(serverCount);
+            server = allServers.get(nextServerIndex);
+
+            if (server == null) {
+                /* Transient. */
+                Thread.yield();
+                continue;
+            }
+
+            if (server.isAlive() && (server.isReadyToServe())) {
+                return (server);
+            }
+
+            // Next.
+            server = null;
+        }
+
+        if (count >= 10) {
+            log.warn("No available alive servers after 10 tries from load balancer: "
+                    + lb);
+        }
+        return server;
+    }
+
+    /**
+     * Inspired by the implementation of {@link AtomicInteger#incrementAndGet()}.
+     *
+     * @param modulo The modulo to bound the value of the counter.
+     * @return The next value.
+     */
+    private int incrementAndGetModulo(int modulo) {
+        for (;;) {
+            int current = nextServerCyclicCounter.get();
+            int next = (current + 1) % modulo;
+            if (nextServerCyclicCounter.compareAndSet(current, next))
+                return next;
+        }
+    }
+```
+可以看出，首先会获取所有可调用的服务方列表，然后在`incrementAndGetModulo`方法内部使用CAS的策略进行轮训操作，如果轮训过程中，某个服务不可用，会进行重试，最多重试10次。
  
  
 
