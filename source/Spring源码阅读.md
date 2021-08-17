@@ -2,12 +2,31 @@
 
 标签（空格分隔）： spring 源码
 
+* [Spring源码阅读](#spring源码阅读)
+   * [相关版本](#相关版本)
+   * [eureka源码分析](#eureka源码分析)
+      * [注册](#注册)
+      * [对外提供服务](#对外提供服务)
+      * [下线](#下线)
+      * [源码分析](#源码分析)
+   * [Ribbon源码分析](#ribbon源码分析)
+      * [@LoadBalanced注解](#loadbalanced注解)
+      * [Ribbon的负载均衡策略](#ribbon的负载均衡策略)
+   * [Hystrix源码分析](#hystrix源码分析)
+      * [命令模式](#命令模式)
+      * [Hystrix线程池隔离](#hystrix线程池隔离)
+      * [请求合并](#请求合并)
+      * [Hystrix状态转换](#hystrix状态转换)
+   * [feign源码分析](#feign源码分析)
+      * [feign的服务降级](#feign的服务降级)
+   * [spring cloud config源码分析](#spring-cloud-config源码分析)
+
 本文主要针对springBoot、springCloud的相关组件的源码阅读及个人理解，参考了很多《Spring Cloud微服务实战》一书的源码分析。
 
 ## 相关版本
 
-- springboot  2.1.4.RELEASE
-- springcloud Greenwich.SR1
+- springboot  2.3.3.RELEASE
+- springcloud Hoxton.SR10
 
 
 ## eureka源码分析
@@ -15,7 +34,7 @@
 ### 注册
  - 各个服务组件是如何将自己注册到eureka上的呢？
 
-简单来说就是想eureka发送REST请求将自己注册到Eureka Server上的。
+简单来说就是向eureka发送REST请求将自己注册到Eureka Server上的。
 
  - 那么，这些注册信息又是如何在Eureka上保存的呢？
 
@@ -23,24 +42,29 @@ Eureka内部通过，使用双层的Map结构来保存服务的注册信息。�
 
  - 服务注册到eureka上以后，如何告诉eureka自己还”活着“呢？避免eureka将自己剔除呢？
 
-服务于eureka会通过心跳机制，来告诉eureka，自己还”活着“。这也叫”服务续约“，关于续约，有下面两个重要的参数：
+服务与eureka会通过心跳机制，来告诉eureka，自己还”活着“。这也叫”服务续约“，关于续约，有下面两个重要的参数：
+
 ```java
 spring.instance.lease-renewal-interval-in-seconds=30
 spring.instance.lease-expiration-duration-in-seconds=90
 ```
-前者定义了服务多久eureka通信一次，后者告诉eureka多久将无心跳的服务踢下线。上面的30和90秒都是默认时间，也就是说，不手动配置，这两个参数也是生效的，只不过取默认值。
+
+前者定义了服务多久和eureka通信一次，后者告诉eureka多久将无心跳的服务踢下线。上面的30和90秒都是默认时间，也就是说，不手动配置，这两个参数也是生效的，只不过取默认值。
 
 ### 对外提供服务
  - 服务消费者如何获取eureka上注册的服务提供者呢？
 
- 消费者会发送REST请求给eureka，以获取eureka上注册的服务清单（可能不仅仅只包含服务提供者）。处于性能考虑，eureka会维护（缓存）一份只读的服务清单来返回给客户端。该缓存清单没隔30s会更新一次。如果希望修改这个时间，可以使用如下的配置：
- ```java
+消费者会发送REST请求给eureka，以获取eureka上注册的服务清单（可能不仅仅只包含服务提供者）。出于性能考虑，eureka会维护（缓存）一份只读的服务清单来返回给客户端。该缓存清单每隔30s会更新一次。如果希望修改这个时间，可以使用如下的配置：
+ 
+```java
  eureka.client.registry-fetch-interval-seconds=15
- ```
- 消费者获取到服务清单以后（起止包含服务提供者的元数据信息），可以根据自己的实际需要进行调用，Ribbon默认采用轮训的方式进行调用，从而实现负载均衡。
+```
+ 
+消费者获取到服务清单以后（其中包含服务提供者的元数据信息），可以根据自己的实际需要进行调用，Ribbon默认采用轮训的方式进行调用，从而实现负载均衡。
  
  
 ### 下线
+
  - 服务下线
 
 正常的服务下线时，会给eureka发送下线的Rest请求，告诉eureka将自己从服务列表剔除。
@@ -170,10 +194,10 @@ public class DiscoveryClient implements EurekaClient {
         }
     }
 ```
-上面的`if (clientConfig.shouldFetchRegistry())`就是判断是否需要启动服务列表获取的定时任务，if (clientConfig.shouldRegisterWithEureka())就是判断是否需要将服务注册到eureka上去。定时任务的执行周期都可以配置文件进行配置，否则取默认值。
+上面的`if (clientConfig.shouldFetchRegistry())`就是判断是否需要启动服务列表获取的定时任务，`if (clientConfig.shouldRegisterWithEureka())`就是判断是否需要将服务注册到eureka上去。定时任务的执行周期都可以配置文件进行配置，否则取默认值。
 
  
- 在if (clientConfig.shouldRegisterWithEureka())分支内创建了一个InstanceInfoReplicator对象，这个对象实现了Runnable接口，通过查看其run方法：
+ 在`if (clientConfig.shouldRegisterWithEureka())`分支内创建了一个InstanceInfoReplicator对象，这个对象实现了Runnable接口，通过查看其run方法：
 ```java
  public void run() {
         try {
@@ -247,10 +271,11 @@ public class DiscoveryClient implements EurekaClient {
         }
     }
 ```
- refreshRegistry方法内部会做一个判断，以决定是否全量拉取服务注册信息还是只拉取更新的服务注册信息。
+refreshRegistry方法内部会做一个判断，以决定是否全量拉取服务注册信息还是只拉取更新的服务注册信息。
  
- 上面if判断的结果会决定remoteRegionsModified标志位的值，真正的服务获取是在fetchRegistry方法内完成的。
- ```java
+下面`if`判断的结果会决定`remoteRegionsModified`标志位的值，真正的服务获取是在`fetchRegistry`方法内完成的。
+ 
+```java
  @VisibleForTesting
     void refreshRegistry() {
         try {
@@ -305,7 +330,7 @@ public class DiscoveryClient implements EurekaClient {
             logger.error("Cannot fetch registry from server", e);
         }
     }
- ```
+```
  
  上面讲的都是服务如何向eureka发起注册，那么**eureka是如何处理这些注册请求的**呢？下面我们具体看一下：
  
@@ -483,6 +508,12 @@ handleRegistration的源码如下：
 ```
 
 注册的过程中使用了读锁，可以不影响服务列表的获取，但是会阻塞其他的并发写请求。
+
+同时，也可以看出真正的数据存储在`registry`中，而`registry`的数据结构定义如下：
+```java
+private final ConcurrentHashMap<String, Map<String, Lease<InstanceInfo>>> registry = new ConcurrentHashMap();
+```
+这也印证了之前说的，eureka使用了双层Map的结构来存储注册在其上面的服务实例信息。
 
 
 ## Ribbon源码分析
@@ -694,8 +725,8 @@ public class LoadBalancerAutoConfiguration {
  接下来，我们看看LoadBalancerInterceptor是如何将普通的RestTemplate变成具有负载均衡功能的。
  
  下面是LoadBalancerInterceptor的源码：
- ```java
- import java.io.IOException;
+```java
+import java.io.IOException;
 import java.net.URI;
 
 import org.springframework.http.HttpRequest;
@@ -734,7 +765,7 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
 		return this.loadBalancer.execute(serviceName, requestFactory.createRequest(request, body, execution));
 	}
 }
- ```
+```
  
  通过源码可以看到，拦截器中注入了LoadBalancerClient的实现，当客户端发起请求时，会被拦截器的intercept方法拦截。
  
@@ -748,7 +779,7 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
   ![IRule](./image/spring/IRule.png)
  
  IRule作为顶层的接口，其源码如下：
- ```java
+```java
  /**
  * Interface that defines a "Rule" for a LoadBalancer. A Rule can be thought of
  * as a Strategy for loadbalacing. Well known loadbalancing strategies include
@@ -911,7 +942,7 @@ Process finished with exit code 0
  2. **【命令执行】**  HystrixCommand实现了execute()方法和queue()方法
 
 同步方法：
- ```java
+```java
     /**
      * Used for synchronous execution of command.
      * 
@@ -1051,7 +1082,7 @@ Process finished with exit code 0
 
 
  HystrixObservableCommand实现了observe()和toObservable()方法【https://github.com/Netflix/Hystrix/wiki/How-To-Use#Reactive-Execution】。源码如下：
- ```java
+```java
      /**
      * Used for asynchronous execution of command with a callback by subscribing to the {@link Observable}.
      * <p>
@@ -1087,11 +1118,11 @@ Process finished with exit code 0
             }
         });
     }
- ```
+```
  
  
 
- ```java
+```java
      /**
      * Used for asynchronous execution of command with a callback by subscribing to the {@link Observable}.
      * <p>
@@ -1266,7 +1297,7 @@ Process finished with exit code 0
             }
         });
     }
- ```
+```
  
  https://github.com/Netflix/Hystrix/wiki/How-To-Use#Reactive-Execution
 
