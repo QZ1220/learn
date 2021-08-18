@@ -933,7 +933,7 @@ ribbon.NFLoadBalancerRuleClassName=com.netflix.loadbalancer.RandomRule
 	}
 ```
 
-总结下来就是，根据subRule（这里的subRule默认就是RoundRobinRule，当然也可以是其他配置的rule）的规则去匹配服务提供方answer，如果(answer为空或者不可用) 且 未到超时时间，那么就会不断尝试调用subRule的choose已获得answer。同时，会创建一个InterruptTask对象，以便在超时时间以后中断当前while循环。
+总结下来就是，根据subRule（这里的subRule默认就是RoundRobinRule，当然也可以是其他配置的rule）的规则去匹配服务提供方answer，如果(answer为空或者不可用) 且 未到超时时间（500ms），那么就会不断尝试调用subRule的choose已获得answer。同时，会创建一个InterruptTask对象，以便在超时时间以后中断当前while循环。
 
  
  
