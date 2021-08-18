@@ -1064,6 +1064,8 @@ Process finished with exit code 0
 
 ### 源码解析
 
+#### command执行过程
+
 从网上找了一张图，这张图对于hystrix的断路过程解释的挺清晰的，如下所示（原图地址：https://pbs.twimg.com/media/DRAsk2fW0AAngaX.jpg）：
 
 ![Hystrix](./image/spring/Hystrix.jpg)
@@ -1073,7 +1075,7 @@ Process finished with exit code 0
  1. **【构造Command】**  构造一个HystrixCommand（阻塞，通过observe()方法可变为非阻塞）或者HystrixObservableCommand（非阻塞）对象，用来表示对依赖服务的操作请求，同时传递所需参数。
  2. **【命令执行】**  HystrixCommand实现了execute()方法和queue()方法
 
-同步方法：
+同步方法`execute`：
 ```java
     /**
      * Used for synchronous execution of command.
@@ -1096,7 +1098,7 @@ Process finished with exit code 0
     }
 ```
 
-异步方法：
+异步方法`queue`源码如下，如果没有配置单独的线程来执行，这个方法也会是同步执行，和`execute`的效果一样：
 
 ```java
     /**
@@ -1213,7 +1215,7 @@ Process finished with exit code 0
 ```
 
 
- HystrixObservableCommand实现了observe()和toObservable()方法【https://github.com/Netflix/Hystrix/wiki/How-To-Use#Reactive-Execution】。源码如下：
+ HystrixObservableCommand实现了observe()和toObservable()方法，关于此的官方文档地址在[这里](https://github.com/Netflix/Hystrix/wiki/How-To-Use#Reactive-Execution)。源码如下：
 ```java
      /**
      * Used for asynchronous execution of command with a callback by subscribing to the {@link Observable}.
@@ -1449,7 +1451,7 @@ Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核�
 5. **【线程池、请求队列、信号量是否占满】**  如果与命令相关的线程池和请求队列（阻塞队列），或者信号量（当不使用线程池的时候）已经占满，那么Hystrix也不会执行命令，而是转而执行fallback的处理逻辑。      需要**注意**的是，这里所说的线程池并非web容器的（接收）线程池，而是每个依赖服务的专有线程池。Hystrix为了保证不会因为某个依赖服务出现问题而影响到其他服务，使用了【Bulkhead Pattern】来隔离每个依赖的服务。
 6. **【HystrixObservableCommand.construct()或者HystrixCommand.run()】**     HystrixCommand.run()返回单一结果，或者抛出异常；HystrixObservableCommand.construct()返回一个Observable对象用于发射多个返回值，或者提供onError发射错误通知。    如果run或者construct方法执行时间超出了命令设置的超时时间，**当前处理线程**就会抛出一个TimeOutException（如果该命令不在其自身的线程中执行，则会通过单独的计时线程来抛出）。如果命令执行失败或者执行超时，命令都会转而执行fallback。  
 7. **【健康度计算】**   上一步命令执行的结果（无论正常执行或者抛出异常），都会产生一个反馈，从而影响【断路器是否开路】这一开关判断。如果将【断路器】开路，那么也不是一直开路，它有一个恢复期的概念（类似于倒计时），如果恢复期结果结束仍不能达到【断路器】闭合的条件，那么就会再次开路进入下一个恢复期。
-8. **【fallback】**   也就是【服务降级】，当命令不能正常被执行的时候，都会转而执行fallback的逻辑。
+8. **【fallback】**   也就是【服务降级】，当命令不能正常被执行的时候，都会转而执行fallback的逻辑。如果fallback不存在，那么就会抛出HystrixRuntimeException的异常。
 9. **【返回成功的响应】**   当Hystrix命令执行成功以后，它会将处理结果直接返回或是以Observable对象的形式返回。
 
 ![hystrix-return-flow](./image/spring/hystrix-return-flow.png)
@@ -1458,6 +1460,8 @@ Hystrix底层大量使用了RxJava，即响应式编程的思想。其内部核�
  - observe()：在toObservable()产生原始的Observable对象之后立即订阅它，让命令能够马上开始异步执行，并返回一个Observable对象。当调用它的subscribe时，将重新产生结果并通知到订阅者；
  - queue()：将toObservable()产生的原始Observable对象通过toBlocking()方法转换成BlockingObservable对象，并调用它的toFuture()方法返回异步的Future对象
  - execute()：在queue()产生异步结果Future对象之后，通过调用get()方法阻塞并等待结果的返回
+
+#### 断路器HystrixCircuitBreaker
 
 以上是Command的执行过程，下面看一下断路器的具体内容。
 
