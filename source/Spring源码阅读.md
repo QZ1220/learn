@@ -12,6 +12,8 @@
    * [Ribbon源码分析](#ribbon源码分析)
       * [@LoadBalanced注解](#loadbalanced注解)
       * [Ribbon的负载均衡策略](#ribbon的负载均衡策略)
+         * [轮询](#轮询)
+         * [重试](#重试)
    * [Hystrix源码分析](#hystrix源码分析)
       * [命令模式](#命令模式)
       * [Hystrix线程池隔离](#hystrix线程池隔离)
@@ -814,6 +816,13 @@ public interface IRule{
 private final static IRule DEFAULT_RULE = new RoundRobinRule();
 ```
 
+可以通过配置更改使用的路由规则：
+```java
+ribbon.NFLoadBalancerRuleClassName=com.netflix.loadbalancer.RandomRule
+```
+
+#### 轮询
+
 查看RoundRobinRule的源码中的`choose`方法：
 ```java
     public Server choose(ILoadBalancer lb, Object key) {
@@ -874,7 +883,58 @@ private final static IRule DEFAULT_RULE = new RoundRobinRule();
         }
     }
 ```
-可以看出，首先会获取所有可调用的服务方列表，然后在`incrementAndGetModulo`方法内部使用CAS的策略进行轮训操作，如果轮训过程中，某个服务不可用，会进行重试，最多重试10次。
+可以看出，首先会获取所有可调用的服务方列表，然后在`incrementAndGetModulo`方法内部使用CAS的策略进行轮询操作，如果轮询过程中，某个服务不可用，会进行重试，最多重试10次。
+
+#### 重试
+
+我们再看看轮询的`choose`源代码：
+```java
+	/*
+	 * Loop if necessary. Note that the time CAN be exceeded depending on the
+	 * subRule, because we're not spawning additional threads and returning
+	 * early.
+	 */
+	public Server choose(ILoadBalancer lb, Object key) {
+		long requestTime = System.currentTimeMillis();
+		// maxRetryMillis = 500ms
+		long deadline = requestTime + maxRetryMillis;
+
+		Server answer = null;
+
+		answer = subRule.choose(key);
+
+		if (((answer == null) || (!answer.isAlive()))
+				&& (System.currentTimeMillis() < deadline)) {
+
+			InterruptTask task = new InterruptTask(deadline
+					- System.currentTimeMillis());
+
+			while (!Thread.interrupted()) {
+				answer = subRule.choose(key);
+
+				if (((answer == null) || (!answer.isAlive()))
+						&& (System.currentTimeMillis() < deadline)) {
+					/* pause and retry hoping it's transient */
+					// 表示当前线程愿意让出CPU资源，但是并不一定会真正让出，需要看调度器的调度，这里也是为了防止while循环占用过多的CPU资源
+					Thread.yield();
+				} else {
+					break;
+				}
+			}
+
+			task.cancel();
+		}
+
+		if ((answer == null) || (!answer.isAlive())) {
+			return null;
+		} else {
+			return answer;
+		}
+	}
+```
+
+总结下来就是，根据subRule（这里的subRule默认就是RoundRobinRule，当然也可以是其他配置的rule）的规则去匹配服务提供方answer，如果(answer为空或者不可用) 且 未到超时时间，那么就会不断尝试调用subRule的choose已获得answer。同时，会创建一个InterruptTask对象，以便在超时时间以后中断当前while循环。
+
  
  
 
