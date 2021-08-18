@@ -1,6 +1,7 @@
 ﻿# Raft分享
 
 * [Raft分享](#raft分享)
+   * [动画演示](#动画演示)
    * [概述](#概述)
    * [Raft基础](#raft基础)
    * [Leader 选举](#leader-选举)
@@ -11,6 +12,11 @@
    * [Follower 和 candidate 崩溃](#follower-和-candidate-崩溃)
    * [集群成员变更](#集群成员变更)
    * [日志压缩](#日志压缩)
+
+## 动画演示
+
+关于整个raft算法的选举、日志复制、分区容错等过程，可以看这个[动画演示](http://thesecretlivesofdata.com/raft/)，很生动形象。
+
 
 ## 概述
 
