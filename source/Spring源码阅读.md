@@ -16,6 +16,7 @@
          * [重试](#重试)
    * [Hystrix源码分析](#hystrix源码分析)
       * [命令模式](#命令模式)
+      * [源码解析](#源码解析)
       * [Hystrix线程池隔离](#hystrix线程池隔离)
       * [请求合并](#请求合并)
       * [Hystrix状态转换](#hystrix状态转换)
@@ -942,13 +943,9 @@ ribbon.NFLoadBalancerRuleClassName=com.netflix.loadbalancer.RandomRule
 
 ## Hystrix源码分析
 
-从网上找了一张图，这张图对于hystrix的断路过程解释的挺清晰的，如下所示（原图地址：https://pbs.twimg.com/media/DRAsk2fW0AAngaX.jpg）：
-
-![Hystrix](./image/spring/Hystrix.jpg)
-
 ### 命令模式
 
-由于Hystrix内使用了命令模式，在开始讲解之前我们简单认识一下命令模式（https://zhuanlan.zhihu.com/p/56949325）：
+由于Hystrix内使用了命令模式，在开始讲解之前我们简单认识一下[命令模式](https://zhuanlan.zhihu.com/p/56949325)：
 
 命令模式主要是为了实现解耦，简化系统编码设计，但是它的概念却并不那么简单，需要仔细思考（区别于策略模式）。命令模式一般都有命令的发出者、命令的传递者、命令的执行者三个角色。
 
@@ -1064,6 +1061,12 @@ Process finished with exit code 0
 命令模式的使用场景如下：
 
 ![Command](./image/spring/Command.png)
+
+### 源码解析
+
+从网上找了一张图，这张图对于hystrix的断路过程解释的挺清晰的，如下所示（原图地址：https://pbs.twimg.com/media/DRAsk2fW0AAngaX.jpg）：
+
+![Hystrix](./image/spring/Hystrix.jpg)
 
 按图中的数字编号顺序，一一解释如下：
 
@@ -1793,13 +1796,12 @@ public interface HystrixCircuitBreaker {
  - **静态**  内部类NoOpCircuitBreaker：从其注释和内部方法实现都可以看出，这个类默认允许所有的请求，断路器始终处于闭合状态
  - 内部类HystrixCircuitBreakerImpl：它是HystrixCircuitBreaker的实现类，在该类中定义了断路器的5个核心对象：
 
-ll
 
  1. HystrixCommandProperties properties：维护了HystrixCommand的配置参数。
  2. HystrixCommandMetrics metrics：记录HystrixCommand的度量指标。
  3. AtomicLong circuitOpened：断路器打开标志，默认为false
  4. AtomicReference<Status> status：断路器状态引用，默认为CLOSED闭合状态。
- 5.AtomicReference<Subscription> activeSubscription：被激活的订阅，默认为空
+ 5. AtomicReference<Subscription> activeSubscription：被激活的订阅，默认为空
 
 ### Hystrix线程池隔离
 
@@ -1832,7 +1834,7 @@ Hystrix会将一段时间以内的请求（默认10ms）打包一起发送，从
 
 ### Hystrix状态转换
 
- 1. https://blog.csdn.net/qq_44209563/article/details/104697221?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param
+ [参考链接](https://blog.csdn.net/qq_44209563/article/details/104697221?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param)
 
 Hystrix一般存在open、closed、half-open三个状态，默认情况下hystrix处于closed状态（注意Hystrix断路器到语义）。
 
