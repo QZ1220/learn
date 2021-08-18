@@ -887,7 +887,7 @@ ribbon.NFLoadBalancerRuleClassName=com.netflix.loadbalancer.RandomRule
 
 #### 重试
 
-我们再看看轮询的`choose`源代码：
+我们再看看重试【retry】的`choose`源代码：
 ```java
 	/*
 	 * Loop if necessary. Note that the time CAN be exceeded depending on the
