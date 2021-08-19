@@ -17,6 +17,8 @@
    * [Hystrix源码分析](#hystrix源码分析)
       * [命令模式](#命令模式)
       * [源码解析](#源码解析)
+         * [command执行过程](#command执行过程)
+         * [断路器HystrixCircuitBreaker](#断路器hystrixcircuitbreaker)
       * [Hystrix线程池隔离](#hystrix线程池隔离)
       * [请求合并](#请求合并)
       * [Hystrix状态转换](#hystrix状态转换)
@@ -1811,7 +1813,9 @@ public interface HystrixCircuitBreaker {
 
 https://github.com/alexandregama/hystrix-book
 
-hystrix使用线程池隔离的技术（舱壁模式），来避免依赖服务之间相互影响。Hystrix uses separate, per-dependency thread pools as a way of constraining any given dependency so latency on the underlying executions will saturate the available threads only in that pool.
+hystrix使用线程池隔离的技术（Bulkheading-舱壁模式），来避免依赖服务之间相互影响。Hystrix uses separate, per-dependency thread pools as a way of constraining any given dependency so latency on the underlying executions will saturate the available threads only in that pool.
+
+![Hystrix-Bulkheading](./image/spring/Hystrix-Bulkheading.png)
 
 ![request-example-with-latency-1280](./image/spring/request-example-with-latency-1280.png)
 
@@ -1828,6 +1832,11 @@ hystrix使用线程池隔离的技术（舱壁模式），来避免依赖服务�
 **Note**: if a dependency is isolated with a semaphore and then becomes latent, the parent threads will remain blocked until the underlying network calls timeout.（也就是说，信号量是没有超时机制的，如果出现调用耗时较长，那么调用它的上层线程会一直block，直到信号量调用的下层线程超时【本质的原因是因为信号量无法设置超时时间，这也是使用信号量的一个缺点】）。
 
 通过设置execution.isolation.strategy=SEMAPHORE时，Hystrix会使用信号量替代线程池来控制依赖服务的并发。
+
+如果请求的线程池线程用完了怎么办？
+
+答案很简单，直接使用拒绝新的请求，而不是将请求加入等待队列中。
+Maintaning a small thread pool (or semaphore) for each depencency. if it becomes full, requests destined for that dependency will be immediately rejected instead of queued up.
 
 ### 请求合并
 
