@@ -361,6 +361,8 @@ The most important tuning option for ZGC is setting the max heap size (-Xmx). Si
 
 此外还可以设置在xx秒以后，未使用的内存归还给操作系统。参数：`-XX:ZUncommitDelay=<seconds>`，默认300s。
 
+更多关于ZGC的调优相关介绍，可以参考美团的一篇[文章](https://tech.meituan.com/2020/08/06/new-zgc-practice-in-meituan.html)。
+
 
 
 
