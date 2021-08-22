@@ -6,7 +6,8 @@
 
 
 * [jvm学习与调优](#jvm学习与调优)
-   * [常用命令](#常用命令)
+   * [栈帧](#栈帧)
+   * [jvm常用命令](#jvm常用命令)
       * [jps](#jps)
       * [jinfo](#jinfo)
       * [jstat](#jstat)
@@ -19,10 +20,22 @@
       * [CMS调优](#cms调优)
          * [i-CMS](#i-cms)
       * [G1调优](#g1调优)
+      * [ZGC调优](#zgc调优)
+         * [设置堆大小](#设置堆大小)
+         * [设置GC并发线程数](#设置gc并发线程数)
+         * [归还未使用内存](#归还未使用内存)
 
 hint：以下如无特殊说明都是针对jdk8而言
 
-## 常用命令
+## 栈帧
+
+- https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-2.html#jvms-2.6
+- https://zhuanlan.zhihu.com/p/45354152
+
+
+
+
+## jvm常用命令
 
 - https://docs.oracle.com/javase/8/docs/technotes/tools/
 
@@ -277,6 +290,7 @@ For the `parallel` collector, Java SE provides two garbage collection tuning par
 ### G1调优
 
 - https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/g1_gc_tuning.html#g1_gc_tuning
+- https://docs.oracle.com/en/java/javase/11/gctuning/garbage-first-garbage-collector-tuning.html#GUID-90E30ACA-8040-432E-B3A0-1E0440AB556A
 
 关于G1的介绍，可以参考之前的一篇[笔记](https://github.com/AudiVehicle/learn/blob/master/source/G1/G1.md)。
 
@@ -304,7 +318,51 @@ gc日志解析结果如下：
 
 其实，如果是正式环境，调优到这一步，也就不需要再继续优化了，没有太大的提升空间。
 
-其他的参数调优可以参考[这里](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/g1_gc_tuning.html#default_g1_gc).
+其他的参数含义及调优可以参考[这里](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/g1_gc_tuning.html#default_g1_gc).
+
+官方对于G1的调优，也给出了以下一些建议：
+
+- 避免使用直接设置young区大小，例如通过 -Xmn、-XX:NewRatio来限制young区大小。否则会覆盖GC暂停时间目标。
+- 暂停时间不要设置的过于严苛，因为它会影响吞吐量，二者需要做一个平衡
+- mixed gc调优：
+  - -XX:InitiatingHeapOccupancyPercent ：堆占有率达到这个数值则触发global concurrent marking，默认45%
+  - -XX:G1MixedGCLiveThresholdPercent（old区的一个region的存活对象的空间占有率，默认值85%，达到这个值，这个区域就会被回收。此参数是实验性参数，需要使用`-XX:+UnlockExperimentalVMOptions`解锁。一个不太恰当的解释：可以将这个参数类比为HashMap中的loadFactor）和-XX:G1HeapWastePercent（在global concurrent marking结束之后，可以知道有多少空间要被回收，在每次YGC之后和再次发送Mixed GC之前，会检查垃圾占比是否达到此参数，只有达到了，下次才会发生Mixed GC，默认值5%）。
+  - -XX:G1MixedGCCountTarget（一次global concurrent marking之后，最多执行Mixed GC的次数，默认值8次）和-XX:G1OldCSetRegionThresholdPercent（设置在一次mixed GC过程中，最多可以回收的old region的数量，百分比的形式表示，默认值10%）
+
+### ZGC调优
+
+- https://docs.oracle.com/en/java/javase/11/gctuning/z-garbage-collector1.html#GUID-A5A42691-095E-47BA-B6DC-FB4E5FAA43D0
+- https://docs.oracle.com/en/java/javase/16/gctuning/z-garbage-collector.html#GUID-8637B158-4F35-4E2D-8E7B-9DAEF15BB3CD
+
+从JDK11开始，官方引入了一种新的垃圾收集器，ZGC。ZGC对于所有的耗时操作均使用并发的方式，使得业务线程的停顿时间在10ms内，ZGC适用于对于低延迟要求很高的场景，且可以管理很大的内存（TB级别）。
+
+使用如下命令开启ZGC（可以看出在JDK11，ZGC还处于实验阶段）：
+```java
+-XX:+UnlockExperimentalVMOptions -XX:+UseZGC.
+```
+在JDK16中开启ZGC的方式如下：
+```java
+-XX:+UseZGC
+```
+
+#### 设置堆大小
+
+下面是官方文档里的一段原文，大致意思就是：对于ZGC调优，最重要的就是设置`最大堆大小`（-Xmx）。因为设置了堆大小便于JVM调节堆空间，使得程序可以在需要的时候申请足够的空间。对于ZGC而言，给的堆空间越大越好，但是也不可避免的会造成一些内存资源浪费，这个就需要在实际项目中去进行取舍平衡（多大的内存，GC的频率）了。
+
+The most important tuning option for ZGC is setting the max heap size (-Xmx). Since ZGC is a concurrent collector a max heap size must be selected such that, 1) the heap can accommodate the live-set of your application, and 2) there is enough headroom in the heap to allow allocations to be serviced while the GC is running. How much headroom is needed very much depends on the allocation rate and the live-set size of the application. In general, the more memory you give to ZGC the better. But at the same time, wasting memory is undesirable, so it’s all about finding a balance between memory usage and how often the GC needs to run.
+
+#### 设置GC并发线程数
+
+通过参数`-XX:ConcGCThreads`可以设置GC并发的线程数，一般而言这个参数jvm可以自适应，但是针对特定的场景可以调节这个参数，使得业务线程执行时间和GC线程时间达到一个平衡。
+
+#### 归还未使用内存
+
+在JDK16中，默认情况下，ZGC会将未使用的堆内存归还给操作系统。但是这种默认行为在-Xms和-Xmx相等的情况下会被禁用。如果二者不等，那么也可以通过参数`-XX:-ZUncommit`来禁用这个特性。
+
+此外还可以设置在xx秒以后，未使用的内存归还给操作系统。参数：`-XX:ZUncommitDelay=<seconds>`，默认300s。
+
+
+
 
 
 
