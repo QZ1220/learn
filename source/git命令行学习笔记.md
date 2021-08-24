@@ -2,15 +2,15 @@
 ## 一、创建本地项目和remote仓库的连接 ##
 ### 添加之前可以先使用如下命令查看一下目前remote的状况： ###
     $ git remote -v
-    origin  http://wangquanzhou:Zhaoxxx@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (fetch)
-    origin  http://wangquanzhou:Zhaoxxx@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (push)
+    origin  http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (fetch)
+    origin  http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (push)
 ### 因为我之前已经添加了remote，所以这里会看到origin ###
 
 ### 可以使用如下命令删除remote ###
     $ git remote rm origin
 
 ### 下面开始添加remote，http方式，@符号之前的用户名和密码可以免去每次提交的时候再手动输入用户名和密码 ###
-    $ git remote add origin http://wangquanzhou:Zhaoxxx@code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
+    $ git remote add origin http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
 
 ### 添加好remote以后，第一次push代码到remote，需要使用如下命令： ###
     $ git push -u origin master
@@ -19,7 +19,7 @@
 
 ### 如果要从remote拉取代码，直接使用如下命令 ###
     $ git pull
-    From http://code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server
+    From http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server
      * [new branch]  master -> origin/master
     There is no tracking information for the current branch.
     Please specify which branch you want to merge with.
@@ -183,12 +183,12 @@ add以后，还需要将更改commit到本地仓库
       master
     Administrator@HP MINGW64 /d/test/Customer-Relationship-Management-System---Server (feature)
     $ git remote -v
-    origin  http://code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (fetch)
-    origin  http://code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (push)
+    origin  http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (fetch)
+    origin  http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (push)
     Administrator@HP MINGW64 /d/test/Customer-Relationship-Management-System---Server (feature)
     $ git push origin feature
     Total 0 (delta 0), reused 0 (delta 0)
-    To http://code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
+    To http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
      * [new branch]  feature -> feature
 
 ### 2、如果远程分支已经存在，本地分支不存在，那么可以使用如下命令来建立对应关系 ###
@@ -244,7 +244,7 @@ add以后，还需要将更改commit到本地仓库
     431f4d3 HEAD@{14}: commit: 测试
     3eb1ede (origin/master) HEAD@{15}: reset: moving to 3eb1ede
     d7a2fd3 HEAD@{16}: commit: 删除原CRMserver端老版本的代码
-    3eb1ede (origin/master) HEAD@{17}: clone: from http://code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
+    3eb1ede (origin/master) HEAD@{17}: clone: from http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
     Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
     $ git reset --hard 3ecd5f5
     HEAD is now at 3ecd5f5 dev分支修改了test.java文件
@@ -340,7 +340,7 @@ add以后，还需要将更改commit到本地仓库
     431f4d3 HEAD@{18}: commit: 测试
     3eb1ede (origin/master) HEAD@{19}: reset: moving to 3eb1ede
     d7a2fd3 HEAD@{20}: commit: 删除原CRMserver端老版本的代码
-    3eb1ede (origin/master) HEAD@{21}: clone: from http://code.cmschina.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
+    3eb1ede (origin/master) HEAD@{21}: clone: from http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
     Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
     $ git tag v0.0.5 431f4d3
     Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
@@ -351,7 +351,7 @@ add以后，还需要将更改commit到本地仓库
     Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
     $ git show v0.0.5
     commit 431f4d3020b533c478fe21d53dc02cf801bcf58f (tag: v0.0.5)
-    Author: wangquanzhou <wangquanzhou@cmschina.com.cn>
+    Author: xxx <xxx@xxx.com.cn>
     Date:   Sun Oct 15 14:05:02 2017 +0800
     测试
     diff --git a/test.java b/test.java
