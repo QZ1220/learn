@@ -2,15 +2,15 @@
 ## 一、创建本地项目和remote仓库的连接 ##
 ### 添加之前可以先使用如下命令查看一下目前remote的状况： ###
     $ git remote -v
-    origin  http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (fetch)
-    origin  http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (push)
+    origin  http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/xxx---Server.git (fetch)
+    origin  http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/xxx---Server.git (push)
 ### 因为我之前已经添加了remote，所以这里会看到origin ###
 
 ### 可以使用如下命令删除remote ###
     $ git remote rm origin
 
 ### 下面开始添加remote，http方式，@符号之前的用户名和密码可以免去每次提交的时候再手动输入用户名和密码 ###
-    $ git remote add origin http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
+    $ git remote add origin http://xxx:Zhaoxxx@code.xxx.com.cn/glyyyfwkfz/xxx---Server.git
 
 ### 添加好remote以后，第一次push代码到remote，需要使用如下命令： ###
     $ git push -u origin master
@@ -19,7 +19,7 @@
 
 ### 如果要从remote拉取代码，直接使用如下命令 ###
     $ git pull
-    From http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server
+    From http://code.xxx.com.cn/glyyyfwkfz/xxx---Server
      * [new branch]  master -> origin/master
     There is no tracking information for the current branch.
     Please specify which branch you want to merge with.
@@ -33,7 +33,7 @@
     $ git add ./
     warning: LF will be replaced by CRLF in test.java.
     The file will have its original line endings in your working directory.
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git status
     On branch master
     Changes to be committed:
@@ -41,74 +41,74 @@
     modified:   test.java
 
 add以后，还需要将更改commit到本地仓库
-        Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+        Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git commit -m "添加test.java文件"
     [master c33986b] 添加test.java文件
 
 ### 最后就是push操作将本地所有的修改同步到remote生效，origin就是我们第一步添加的remote连接，master表示本地推送时所处的branch分支 ###
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git push origin master
 
 ## 三、分支管理 ##
 ### GitHub上想要在master下新建一个分支的话。可以直接在本地新建一个dev分支，然后直接推送到origin，相应的origin也会产生一个dev分支，这样就完成在remote创建新分支的过程。
 ### 查看分支状态，表明当前我只有一个master分支 ###
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git branch
     * master
 
 ### 一般我们不直接在master分支修改代码，而是新建一个类似名为dev的分支来修改代码，然后在dev分支add和commit所做的修改，然后和master分支合并，然后再push到remote ###
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git branch
     * master
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git checkout -b dev
     Switched to a new branch 'dev'
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ git branch
     * dev
       master
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ ls
     cpack.dat  fop/  lib/  pager-taglib.tld  README.md  server-config.wsdd  src/  test.java  test2.java  web.xml  weblogic.xml  WebRoot/
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ vi test.java
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ git add ./
     warning: LF will be replaced by CRLF in test.java.
     The file will have its original line endings in your working directory.
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ git commit -m "dev分支修改了test.java文件"
     [dev 3ecd5f5] dev分支修改了test.java文件
      1 file changed, 1 insertion(+)
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ git branch
     * dev
       master
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ git checkout master
     Switched to branch 'master'
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ cat test.java
     hello world
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git merge dev
     Updating c33986b..3ecd5f5
     Fast-forward
      test.java | 1 +
      1 file changed, 1 insertion(+)
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ cat test.java
     hello world
     this is dev branch
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git branch -d dev
     Deleted branch dev (was 3ecd5f5).
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git branch
     * master
 ### 上面代码注意的是，我们一定要在dev分支将所做的修改add并且commit以后，再删除dev分支，否则一切在dev分支的修改都不会同步到master分支。
 ### 合并dev分支的时候可以使用--no-ff参数，表示禁用Fast forward，这样merge操作就可以被记录下来否则merge操作就没有记录 ###
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git log --graph --pretty=oneline --abbrev-commit
     * 3ecd5f5 (HEAD -> master) dev分支修改了test.java文件//这里也做过merge，但是没有任何记录
     * c33986b 添加test.java文件
@@ -116,34 +116,34 @@ add以后，还需要将更改commit到本地仓库
     * e744267 hhh
     * 3eb1ede (origin/master) Init Commit
     * 059ab5f first commit
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git branch
     * master
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git checkout -b dev
     Switched to a new branch 'dev'
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ vi test.java
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ git add ./
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ git commit -m "commit with --no-ff"
     [dev 972dc0f] commit with --no-ff
      1 file changed, 1 insertion(+)
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (dev)
     $ git checkout master
     Switched to branch 'master'
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git merge --no-ff -m "merge with no-ff" dev
     Merge made by the 'recursive' strategy.
      test.java | 1 +
      1 file changed, 1 insertion(+)
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ cat test.java
     hello world
     this is dev branch
     merge with --no-ff
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git log --graph --pretty=oneline --abbrev-commit
     *   4aab4e1 (HEAD -> master) merge with no-ff
     |\
@@ -157,9 +157,9 @@ add以后，还需要将更改commit到本地仓库
     * 059ab5f first commit
     
 ### 如果使用上面分支管理仍然由于某些原因发现，两个分支存在差异，可以使用如下命令将，例如使用dev分支的文件覆盖master分支的文件或者文件夹，下面的lib文件夹也可以换成一个文件名 ###
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git checkout dev -- lib
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git status
     On branch master
     Changes to be committed:
@@ -173,32 +173,32 @@ add以后，还需要将更改commit到本地仓库
 
 ### 关于远程分支与本地分支的对应关系：
 ### 1、如果远程分支不存在，而本地分支存在，例如本地有分支feature，远程没有，那么直接使用如下命令，就可以实现在远程建立一个feature分支，并且远程分支feature和本地feature分支是有对应关系的 ###
-    Administrator@HP MINGW64 /d/test/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/test/xxx---Server (master)
     $ git checkout -b feature
     Switched to a new branch 'feature'
-    Administrator@HP MINGW64 /d/test/Customer-Relationship-Management-System---Server (feature)
+    Administrator@HP MINGW64 /d/test/xxx---Server (feature)
     $ git branch
       dev
     * feature
       master
-    Administrator@HP MINGW64 /d/test/Customer-Relationship-Management-System---Server (feature)
+    Administrator@HP MINGW64 /d/test/xxx---Server (feature)
     $ git remote -v
-    origin  http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (fetch)
-    origin  http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git (push)
-    Administrator@HP MINGW64 /d/test/Customer-Relationship-Management-System---Server (feature)
+    origin  http://code.xxx.com.cn/glyyyfwkfz/xxx---Server.git (fetch)
+    origin  http://code.xxx.com.cn/glyyyfwkfz/xxx---Server.git (push)
+    Administrator@HP MINGW64 /d/test/xxx---Server (feature)
     $ git push origin feature
     Total 0 (delta 0), reused 0 (delta 0)
-    To http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
+    To http://code.xxx.com.cn/glyyyfwkfz/xxx---Server.git
      * [new branch]  feature -> feature
 
 ### 2、如果远程分支已经存在，本地分支不存在，那么可以使用如下命令来建立对应关系 ###
-    Administrator@HP MINGW64 /d/test/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/test/xxx---Server (master)
     $ git checkout -b feature origin/feature
     Switched to a new branch 'feature'
     Branch feature set up to track remote branch feature from origin.
 
 ### 3、如果远程分支已经存在，本地分支也存在，但是二者没有对应关系，那么可以使用如下命令来建立对应关系 ###
-    Administrator@HP MINGW64 /d/test/Customer-Relationship-Management-System---Server (dev)
+    Administrator@HP MINGW64 /d/test/xxx---Server (dev)
     $ git branch --set-upstream-to=origin/dev dev
     Branch dev set up to track remote branch dev from origin.
 
@@ -225,7 +225,7 @@ add以后，还需要将更改commit到本地仓库
     git branch --set-upstream branch-name origin/branch-name。
 ## 四、版本回退和撤销修改 ##
 ### 如果发现文件更改有问题，那么可以进行版本回退 ###
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git reflog
     4aab4e1 (HEAD -> master) HEAD@{0}: merge dev: Merge made by the 'recursive' strategy.
     3ecd5f5 HEAD@{1}: checkout: moving from dev to master
@@ -244,8 +244,8 @@ add以后，还需要将更改commit到本地仓库
     431f4d3 HEAD@{14}: commit: 测试
     3eb1ede (origin/master) HEAD@{15}: reset: moving to 3eb1ede
     d7a2fd3 HEAD@{16}: commit: 删除原CRMserver端老版本的代码
-    3eb1ede (origin/master) HEAD@{17}: clone: from http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    3eb1ede (origin/master) HEAD@{17}: clone: from http://code.xxx.com.cn/glyyyfwkfz/xxx---Server.git
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git reset --hard 3ecd5f5
     HEAD is now at 3ecd5f5 dev分支修改了test.java文件
 
@@ -254,17 +254,17 @@ add以后，还需要将更改commit到本地仓库
 ### 一种是readme.txt已经添加到暂存区后，又作了修改，现在，撤销修改就回到添加到暂存区后的状态。 ###
 ### 总之，就是让这个文件回到最近一次git commit或git add时的状态。 ###
 ### 那如果修改的文件以及add到了暂存区了，怎么回退？  ###
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ cat test.java
     hello world
     this is dev branch
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git status
     On branch master
     nothing to commit, working tree clean
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ vi test.java
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git status
     On branch master
     Changes not staged for commit:
@@ -272,19 +272,19 @@ add以后，还需要将更改commit到本地仓库
       (use "git checkout -- <file>..." to discard changes in working directory)
     modified:   test.java
     no changes added to commit (use "git add" and/or "git commit -a")
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git add ./
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git status
     On branch master
     Changes to be committed:
       (use "git reset HEAD <file>..." to unstage)
     modified:   test.java
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git reset HEAD test.java
     Unstaged changes after reset:
     M   test.java
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git status
     On branch master
     Changes not staged for commit:
@@ -292,14 +292,14 @@ add以后，还需要将更改commit到本地仓库
       (use "git checkout -- <file>..." to discard changes in working directory)
     modified:   test.java
     no changes added to commit (use "git add" and/or "git commit -a")
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ cat test.java
     hello world
     this is dev branch
     rollback
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git checkout -- test.java
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ cat test.java
     hello world
     this is dev branch
@@ -307,17 +307,17 @@ add以后，还需要将更改commit到本地仓库
 ### 更进一步的，如果你add了，还commit了，那么就需要进行版本回退了。 ###
 
 ## 四、标签管理 ##
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git tag
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git tag v1.0.0
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git tag
     v1.0.0
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git branch
     * master
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git reflog
     77f570c (HEAD -> master, tag: v1.0.0) HEAD@{0}: merge dev: Merge made by the 'recursive' strategy.
     3ecd5f5 HEAD@{1}: checkout: moving from dev to master
@@ -340,15 +340,15 @@ add以后，还需要将更改commit到本地仓库
     431f4d3 HEAD@{18}: commit: 测试
     3eb1ede (origin/master) HEAD@{19}: reset: moving to 3eb1ede
     d7a2fd3 HEAD@{20}: commit: 删除原CRMserver端老版本的代码
-    3eb1ede (origin/master) HEAD@{21}: clone: from http://code.xxx.com.cn/glyyyfwkfz/Customer-Relationship-Management-System---Server.git
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    3eb1ede (origin/master) HEAD@{21}: clone: from http://code.xxx.com.cn/glyyyfwkfz/xxx---Server.git
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git tag v0.0.5 431f4d3
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git tag
     v0.0.5
     v1.0.0
 ### 显示tag的具体信息 ###
-    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/Customer-Relationship-Management-System---Server (master)
+    Administrator@HP MINGW64 /d/workspaceJDK7/ksdomain_prd/xxx---Server (master)
     $ git show v0.0.5
     commit 431f4d3020b533c478fe21d53dc02cf801bcf58f (tag: v0.0.5)
     Author: xxx <xxx@xxx.com.cn>
