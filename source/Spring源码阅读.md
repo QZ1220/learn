@@ -23,9 +23,11 @@
       * [Hystrix线程池隔离](#hystrix线程池隔离)
       * [请求合并](#请求合并)
       * [Hystrix状态转换](#hystrix状态转换)
-   * [feign源码分析](#feign源码分析)
-      * [feign的服务降级](#feign的服务降级)
-   * [spring cloud config源码分析](#spring-cloud-config源码分析)
+   * [feign](#feign)
+      * [重试机制](#重试机制-1)
+      * [服务降级](#服务降级)
+      * [请求压缩](#请求压缩)
+   * [spring cloud config](#spring-cloud-config)
 
 本文主要针对springBoot、springCloud的相关组件的源码阅读及个人理解，参考了很多《Spring Cloud微服务实战》一书的源码分析。
 
@@ -1662,13 +1664,13 @@ Hystrix一般存在open、closed、half-open三个状态，默认情况下hystri
 **half-open->closed**: 当熔断器状态为half-open,这时候服务调用方调用服务接口时候，就可以发起远程调用而不再使用本地降级接口，如果发起远程调用成功，则重新设置熔断器状态为closed状态。
  
 
-## feign源码分析
+## feign
 feign调用的时候，如果参数使用@RequestParam或者@RequestHeader注解的话，那么**记得**要写上**value**属性，否则无法正确绑定参数抛出IllegalStateException。
 ```java
 @ApiParam("操作者id") @RequestHeader(name = "user_id") String userId
 ```
 
-feign的客户端负载均衡是通过ribbon来实现的，我们可以直接使用ribbon的配置参数实现客户端的负载均衡。
+feign的客户端负载均衡是通过ribbon来实现的，我们可以直接使用ribbon的配置参数实现客户端的超时时间设置。
 ```java
 ribbon:
   ReadTimeout: 60000
@@ -1684,9 +1686,34 @@ ribbon:
 
 feign组件，默认会引入Ribbon和Hystrix组件。默认情况下，feign会将所有feign客户端的方法都封装到Hystrix的命令中进行服务保护。
 
-### feign的服务降级
+### 重试机制
+
+feign的重试机制，底层依赖的就是ribbon的重试机制，具体可以擦可靠之前的[笔记](https://github.com/AudiVehicle/learn/blob/master/source/Spring%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB.md#%E9%87%8D%E8%AF%95%E6%9C%BA%E5%88%B6)。在新版本的spring cloud中，重试机制的默认是`enable`的。
+
+### 服务降级
+
+feign的服务降级，相对来说，配置比较简单。直接使用`@FeignClient`的`fallback`属性来指定对应的服务降级的实现类。这个类应该和真正的业务处理类继承自同一个接口，只不过这个类内部的方法都是很简单的mock数据。
+
+### 请求压缩
+
+为了减少网络请求的开销，feign支持对请求与响应进行GZIP压缩，配置参数如下：
+```java
+feign.compression.request.enabled=true
+feign.compression.response.enabled=true
+```
+此外，我们还能限制，哪些请求or响应才需要压缩，以及数据量到多大才需要进行压缩：
+```java
+feign.compression.request.mime-types=text/xml,application/xml,application/json
+feign.compression.request.min-request-size=2048
+```
+
+## spring cloud config
+
+![config_server](.image/spring/config_server.png)
+
+上面通过一张图，简单描绘了spring cloud config组件与git以及业务服务的交互方式。简单来说，作为业务服务，启动时的配置参数可以向config server要，如果config server本地有，就直接返回给业务服务。否则config server向远端的git仓库拉取相关配置，在自己本地缓存一份，同时返回给业务服务。
+
+这里，cofig server保存一份配置在本地的好处就是，当远端git不可访问的时候，config server依然可以对外提供服务。
 
 
 
-## spring cloud config源码分析
-该项目主要为了实现配置的动态配置及更新。
