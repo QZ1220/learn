@@ -27,6 +27,8 @@
       * [重试机制](#重试机制-1)
       * [服务降级](#服务降级)
       * [请求压缩](#请求压缩)
+      * [因为重试导致的一个bug](#因为重试导致的一个bug)
+      * [如何关闭重试及源码调试](#如何关闭重试及源码调试)
    * [spring cloud config](#spring-cloud-config)
 
 本文主要针对springBoot、springCloud的相关组件的源码阅读及个人理解，参考了很多《Spring Cloud微服务实战》一书的源码分析。
@@ -1706,6 +1708,51 @@ feign.compression.response.enabled=true
 feign.compression.request.mime-types=text/xml,application/xml,application/json
 feign.compression.request.min-request-size=2048
 ```
+
+### 因为重试导致的一个bug
+
+事情是这样的，我们有一个服务需要请求第三方服务进行电子签章，某一天一位产品找到我说，签字的结果没有回调成功，让我看看是为啥。由于这个服务之前一直运行的很好，近半年来几乎都没出过错。
+
+当时是有点疑惑的，我首先去kibanna上看了发起签署的相关日志，一看吓一跳，相隔几秒钟，发起签署的日志打印了两次，并且traceId是一样的，只是线程id不一样。
+
+这里简单介绍一下，服务的调用链，如下图所示：
+
+![sign_bug](./image/spring/sign_bug.png)
+
+当时还以为是哪位大侠手速超快（因为前端做了hover，且批量提交的数据需要手动选择），连着点了两次呢。。。但是仔细一想，不对啊
+
+即便手速快，连着点两次，traceId不可能是一样的吧，再仔细一想就想到了feign的服务重试机制上来了。并且，两次请求的时间差刚好和配置里的ribbon readTimeOut一致。
+
+那为什么会在短时间内发起两次调用呢？仔细查了查日志发现，是因为我们的服务调用第三方签署服务时，较长时间没有返回。触发了feign的超时重试，加上结合业务代码知道，A服务调用B服务走的Get接口，真是要命。。。这居然是个Get接口。
+
+解决的办法有以下几种：
+
+- B服务的接口，加锁
+- B服务的接口改为Post接口
+- 关闭feign的重试机制
+
+最终，我们采取的方案是加锁+改为Post接口。
+
+这里，再提一句，要挂你重试机制，怎么关闭？
+
+```java
+spring.cloud.loadbalancer.retry.enabled: false
+```
+实测，上面这样是不行的（Ribbon版本 2.3.0）。
+
+经过仔细调试，发现需要使用下面这种方式关闭：
+```java
+ribbon.MaxAutoRetriesNextServer: 0
+```
+下面把详细的过程阐述一下。
+
+### 如何关闭重试及源码调试
+- https://cloud.tencent.com/developer/article/1009212
+
+如参考文献所说，feign本身不做任何关于服务调用的事情，底层都是依赖ribbon和hyxtrix。大概的流程是：在服务调用发起的时候，spring会拦截当前这次请求中@FeignClient注解修饰的client，然后使用IOC的思想，生成真正的RestTemplate对象，最好再把整个请求封装到Command中去。
+
+以SynchronousMethodHandler类的invoke方法作为入口，
+
 
 ## spring cloud config
 
