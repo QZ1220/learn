@@ -1753,7 +1753,7 @@ ribbon.MaxAutoRetriesNextServer=0
 
 以SynchronousMethodHandler类的invoke方法作为入口，整个调试的大概流程下图所示，部分方法省略：
 
-![config_server](.image/spring/feign-retry_workflow.png)
+![config_server](.image/spring/feign_retry_debug.png)
 
 因此，结论就是设置如下参数：
 ```java
@@ -1763,7 +1763,7 @@ ribbon.MaxAutoRetriesNextServer=0
 
 ## spring cloud config
 
-![config_server](.image/spring/feign_retry_debug.png)
+![config_server](.image/spring/config_server.png)
 
 上面通过一张图，简单描绘了spring cloud config组件与git以及业务服务的交互方式。简单来说，作为业务服务，启动时的配置参数可以向config server要，如果config server本地有，就直接返回给业务服务。否则config server向远端的git仓库拉取相关配置，在自己本地缓存一份，同时返回给业务服务。
 
