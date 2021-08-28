@@ -4,9 +4,9 @@
 学习笔记
 ----
 
-[2018学习笔记（一）](https://github.com/AudiVehicle/learn/blob/master/source/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%80.md)
+[2018学习笔记一](https://github.com/AudiVehicle/learn/blob/master/source/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%80.md)
 
-[2018学习笔记（二）](https://github.com/AudiVehicle/learn/blob/master/source/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%88%E4%BA%8C%EF%BC%89.md)
+[2018学习笔记二](https://github.com/AudiVehicle/learn/blob/master/source/2018%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%BA%8C.md)
 
 [2019学习笔记](https://github.com/Audi-A7/learn/blob/master/source/2019%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md)
 
