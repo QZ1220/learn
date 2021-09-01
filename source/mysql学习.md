@@ -36,6 +36,12 @@
    * [undolog redolog](#undolog-redolog)
       * [redolog](#redolog)
       * [undolog](#undolog)
+   * [mysql页合并与分裂](#mysql页合并与分裂)
+      * [物理存储](#物理存储)
+      * [页的内部原理](#页的内部原理)
+         * [页合并](#页合并)
+         * [页分裂](#页分裂)
+         * [页的合并分裂对性能的影响](#页的合并分裂对性能的影响)
 
 
 
@@ -1331,14 +1337,115 @@ redolog的主要作用是当mysql服务器宕机，重启时，mysql可以完成
 undolog的作用是，如果mysql服务器最近的事务回滚了，那么数据要能够回滚到事务执行前的状态。
 
 
+## mysql页合并与分裂
 
+- https://www.percona.com/blog/2017/04/10/innodb-page-merging-and-page-splitting/
+- https://zhuanlan.zhihu.com/p/98818611
 
+### 物理存储
 
+- https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_frm_file
 
+对于mysql来说，底层的数据储，默认情况下在/var/lib/mysql/dbname下面，并且对于低于mysql5.7、8.0，二者的存储是不一样的。
 
+对于mysql5.7而言，一个表有一个.ibd文件(存储实际的数据)和一个.frm（存储表的metadata，例如表的描述信息）。对于分区表的话，一个表会有多个.ibd文件，但是.frm文件还是只有一个。
 
+对于mysql8.0而言，一个表只有一个.ibd文件，不再有.frm文件。（分区表同样存在多个.ibd文件）那表的描述信息存哪里了呢？根据[官方文档](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_frm_file)的描述，存在了[这里](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_data_dictionary)。
+
+ibd文件由多个段组成，每个段和一个索引相关。
+
+文件的结构是不会随着数据行的删除而变化的，但段则会跟着构成它的更小一级单位——区的变化而变化。区仅存在于段内，并且每个区都是固定的1MB大小（页体积默认的情况下）。页则是区的下一级构成单位，默认体积为16KB。
+
+大概的结构就类似这种格式：
+
+段里包含区-->区里包含页-->页里包含数据行
+
+也可以使用下图来帮助理解：
+
+![mysql_seg_extend_page](./image/mysql/mysql_seg_extend_page.jpg)
+
+### 页的内部原理
+
+页可以空或者填充满（100%）或者部分为空，行记录会按照主键顺序来排列。例如在使用AUTO_INCREMENT时，会有顺序的ID 1、2、3、4等，如下图所示。
+
+![mysql_page_1](./image/mysql/mysql_page_1.jpg)
+
+页还有另一个重要的属性：MERGE_THRESHOLD。该参数的默认值是50%页的大小，它在InnoDB的合并操作中扮演了很重要的角色。
+
+当你插入数据时，如果数据（大小）能够放的进页中的话，那他们是按顺序将页填满的。
+
+若当前页满，则下一行记录会被插入下一页（NEXT）中。
+
+根据B树的特性，它可以自顶向下遍历，但也可以在各叶子节点水平遍历。因为每个叶子节点都有着一个指向包含下一条（顺序）记录的页的指针。
+
+例如，页#5有指向页#6的指针，页#6有指向前一页（#5）的指针和后一页（#7）的指针。
+
+这种机制下可以做到快速的顺序扫描（如范围扫描）。之前提到过，这就是当你基于自增主键进行插入的情况。但如果你不仅插入还进行删除呢？
+
+#### 页合并
+
+当你删了一行记录时，实际上记录并没有被物理删除，记录被标记（flaged）为删除并且它的空间变得允许被其他记录声明使用。
+
+![mysql_page_merge](./image/mysql/mysql_page_merge.jpg)
+
+当页中删除的记录达到MERGE_THRESHOLD（默认页体积的50%），InnoDB会开始寻找最靠近的页（前或后）看看是否可以将两个页合并以优化空间使用。比如找到了一个下图中的「页6」。
+
+![mysql_page_merge_2](./image/mysql/mysql_page_merge_2.jpg)
+
+在示例中，页6使用了不到一半的空间，页5又有足够的删除数量，现在同样处于50%使用以下。从InnoDB的角度来看，它们能够进行合并。
+
+![mysql_page_merge_2](./image/mysql/mysql_page_merge_3.jpg)
+
+合并操作使得页#5保留它之前的数据，并且容纳来自页#6的数据。页#6变成一个空页，可以接纳新数据。
+
+如果我们在UPDATE操作中让页中数据体积达到类似的阈值点，InnoDB也会进行一样的操作。
+
+规则就是：页合并发生在删除或更新操作中，关联到当前页的相邻页。如果页合并成功，在INFOMATION_SCHEMA.INNODB_METRICS中的index_page_merge_successful将会增加。如果没有增加，查询该行数据的`STATUS`字段，看看其是否是`disabled`，如果是那么可以使用`set global innodb_monitor_enable ='index_page_merge_successful'`进行启用，然后就可以看到相关的数据统计了，更多信息可以参考[这里](https://dev.mysql.com/doc/refman/5.7/en/innodb-information-schema-metrics-table.html)。
+
+![mysql_merge_statistic](./image/mysql/mysql_merge_statistic.jpg)
+
+#### 页分裂
+
+相比较于页合并，页分裂的概念稍微复杂一点。什么时候会出现页分裂呢？考虑如下情况，假设原来id=27的数据被删除，现在新插入了一条id=27的数据，但是这次数据量比之前的大，导致原来存储id=27的位置存不下新的数据，如下图所示：
+
+![mysql_page_split_1](./image/mysql/mysql_page_split_1.jpg)
   
+ 由于页10没有足够的空间去容纳id=27的数据，根据“下一页”的逻辑，记录应该由页#11负责。如果不巧的是页11也满了的话，如下图所示：
  
+![mysql_page_split_2](./image/mysql/mysql_page_split_2.jpg) 
+
+由于页11也同样满了，数据又不可能不按顺序地插入。怎么办？
+
+InnoDB的做法是（简化版）：
+
+- 创建新页（页12）
+- 判断当前页（页10）可以从哪里进行分裂（记录行层面）
+- 移动记录行
+- 重新定义页之间的关系
+
+![mysql_page_split_3](./image/mysql/mysql_page_split_3.jpg) 
+
+新的页12被创建：
+
+![mysql_page_split_4](./image/mysql/mysql_page_split_4.jpg) 
+
+页11保持原样，只有页之间的关系发生了改变：
+
+页#10相邻的前一页为页#9，后一页为页#12
+页#12相邻的前一页为页#10，后一页为页#11
+页#11相邻的前一页为页#10，后一页为页#13
+
+这样B树水平方向的一致性仍然满足，因为满足原定的顺序排列逻辑。然而从物理存储上讲页是乱序的，而且大概率会落到不同的区。
+
+规律总结：页分裂会发生在插入或更新，并且造成页的错位（dislocation，落入不同的区）
+
+InnoDB用INFORMATION_SCHEMA.INNODB_METRICS表来跟踪页的分裂数。可以查看其中的index_page_splits和index_page_reorg_attempts/successful统计。
+
+同样的，如果status是disabled的话，那么可以使用`set global innodb_monitor_enable ='index_page_splits'`进行启用。
+
+#### 页的合并分裂对性能的影响
+要记住在合并和分裂的过程，InnoDB会在索引树上加写锁（x-latch）。在操作频繁的系统中这可能会是个隐患。它可能会导致索引的锁争用（index latch contention）。如果表中没有合并和分裂（也就是写操作）的操作，称为“乐观”更新，只需要使用读锁（S）。带有合并也分裂操作则称为“悲观”更新，使用写锁（X）。
+
 
 
   [1]: https://github.com/WQZ321123/learn/blob/master/source/image/mysql/master-slave.jpg?raw=true
