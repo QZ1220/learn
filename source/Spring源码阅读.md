@@ -27,6 +27,7 @@
       * [Hystrix线程池隔离](#hystrix线程池隔离)
       * [请求合并](#请求合并)
       * [Hystrix状态转换](#hystrix状态转换)
+      * [Hystrix健康度计算规则](#hystrix健康度计算规则)
    * [feign](#feign)
       * [重试机制](#重试机制-1)
       * [服务降级](#服务降级)
@@ -1841,11 +1842,53 @@ Hystrix会将一段时间以内的请求（默认10ms）打包一起发送，从
 
 Hystrix一般存在open、closed、half-open三个状态，默认情况下hystrix处于closed状态（注意Hystrix断路器到语义）。
 
-**closed->open**:正常情况下熔断器为closed状态，当访问同一个接口次数超过设定阈值并且错误比例超过设置错误阈值时候，就会打开熔断机制，这时候熔断器状态从closed->open。
+**closed->open**:正常情况下熔断器为closed状态，当访问同一个接口次数超过设定阈值或者错误比例超过设置错误阈值时候，就会打开熔断机制，这时候熔断器状态从closed->open。
 
 **open->half-open**:当服务接口对应的熔断器状态为open状态时候，所有服务调用方调用该服务方法时候都是执行本地降级方法，那么什么时候才会恢复到远程调用那？Hystrix提供了一种测试策略，也就是设置了一个时间窗口，从熔断器状态变为open状态开始的一个时间窗口内，调用该服务接口时候都委托服务降级方法进行执行。如果时间超过了时间窗口，则把熔断状态从open->half-open,这时候服务调用方调用服务接口时候，就可以发起远程调用而不再使用本地降级接口，如果发起远程调用还是失败，则重新设置熔断器状态为open状态，从新记录时间窗口开始时间。
 
 **half-open->closed**: 当熔断器状态为half-open,这时候服务调用方调用服务接口时候，就可以发起远程调用而不再使用本地降级接口，如果发起远程调用成功，则重新设置熔断器状态为closed状态。
+ 
+### Hystrix健康度计算规则
+
+在`HystrixCircuitBreakerImpl`中有一个`isOpen`方法，源码如下，注释我都写在里面了：
+```java
+       @Override
+        public boolean isOpen() {
+            if (circuitOpen.get()) {
+                // if we're open we immediately return true and don't bother attempting to 'close' ourself as that is left to allowSingleTest and a subsequent successful test to close
+                return true;
+            }
+
+            // we're closed, so let's see if errors have made us so we should trip the circuit open
+            HealthCounts health = metrics.getHealthCounts();
+
+            // check if we are past the statisticalWindowVolumeThreshold
+            // 默认是10秒内要有20个请求，此时断路器才会工作。也就是说，假设10秒内总共才15个请求，即便每个都失败了，那么断路器也不会打开
+            if (health.getTotalRequests() < properties.circuitBreakerRequestVolumeThreshold().get()) {
+                // we are not past the minimum volume threshold for the statisticalWindow so we'll return false immediately and not calculate anything
+                return false;
+            }
+
+
+            if (health.getErrorPercentage() < properties.circuitBreakerErrorThresholdPercentage().get()) {
+                return false;
+            } else {
+            // 默认情况下，在10秒内，如果50%的请求都失败了，那么断路器就会处理打开的状态
+                // our failure rate is too high, trip the circuit
+                if (circuitOpen.compareAndSet(false, true)) {
+                    // if the previousValue was false then we want to set the currentTime
+                    // 设置断路器打开的时间，以便在一定的时间周期以后，断路器可以自动处于
+                    circuitOpenedOrLastTestedTime.set(System.currentTimeMillis());
+                    return true;
+                } else {
+                    // How could previousValue be true? If another thread was going through this code at the same time a race-condition could have
+                    // caused another thread to set it to true already even though we were in the process of doing the same
+                    // In this case, we know the circuit is open, so let the other thread set the currentTime and report back that the circuit is open
+                    return true;
+                }
+            }
+        }
+```
  
 
 ## feign
