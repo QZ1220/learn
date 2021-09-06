@@ -9,12 +9,16 @@
       * [对外提供服务](#对外提供服务)
       * [下线](#下线)
       * [源码分析](#源码分析)
+         * [客户端发起注册与服务获取](#客户端发起注册与服务获取)
+         * [服务端接收注册](#服务端接收注册)
+         * [多个eureka server信息同步](#多个eureka-server信息同步)
    * [Ribbon源码分析](#ribbon源码分析)
       * [@LoadBalanced注解](#loadbalanced注解)
       * [Ribbon的负载均衡策略](#ribbon的负载均衡策略)
          * [轮询](#轮询)
          * [重试](#重试)
       * [重试机制](#重试机制)
+      * [基于Ribbon实现服务灰度发布](#基于ribbon实现服务灰度发布)
    * [Hystrix源码分析](#hystrix源码分析)
       * [命令模式](#命令模式)
       * [源码解析](#源码解析)
@@ -1117,8 +1121,19 @@ ribbon.NFLoadBalancerRuleClassName=com.netflix.loadbalancer.RandomRule
 由于eureka实现的服务治理机制强调了CAP中的AP，它与zookeeper这类强调CP的服务治理不同。Eureka为了保证服务的可用性，牺牲了一定的一致性，在极端情况下，宁愿接受故障实例，也不要丢掉「健康」的实例。比如，当服务注册中心的网络发送故障时，eureka会因为超过85%的实例丢失心跳而触发保护机制，它会保留此时的所有节点，以保证大多数节点的调用是可以正常完成的（即便存在小部分故障节点）。
 
 
+### 基于Ribbon实现服务灰度发布
 
- 
+基本思路就是，首先开启`endpoints.shutdown.enabled:  true`启用shutdown端点，以便在灰度以后可以支持优雅停机.
+
+然后，重写自己的路由负载Rule，配置Ribbon使用该Rule，并且对于灰度时希望灰度的请求，在请求头增加标识信息。并且，对于灰度服务实例，通过`spring.instance.hostname`设置实例的名称，以和正常服务进行区分。
+
+后续，通过请求头中的标识信息，判断是否应该走灰度服务实例。
+
+具体，整理了一个简易流程图，如下所示：
+
+![ribbon-gray-deploy](./image/spring/ribbon-gray-deploy.png)
+
+灰度测试通过以后，对于原旧服务实例发送shutdown请求实现优雅关机。然后往eureka注册新的服务，最好再优雅关机灰度服务实例。
  
 
  
