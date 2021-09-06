@@ -84,12 +84,14 @@ spring.instance.lease-expiration-duration-in-seconds=90
 
 ### 源码分析
 
-一般配置一个eureka服务，我们会做两件事情：
+一般配置一个eureka服务端，我们会做两件事情：
 
- 1. 在Application主类中配置@EnableDiscoveryClient/@EnableEurekaClient注解
+ 1. 在Application主类中配置EnableEurekaServer，（@EnableDiscoveryClient/@EnableEurekaClient是客户端是使用的注解）注解
  2. 在application.properties中配置defaultZone
 
-注意：@EnableDiscoveryClient/@EnableEurekaClient功能类似，区别在于@EnableDiscoveryClient适用于包含eureka在内的多个注册中心，但是@EnableEurekaClient只适用于eureka。（@EnableEurekaServer注解也可以达到上面两个注解的效果，但是区别嘛。。。嗯  暂时不清楚，官方也没说。）
+注意：@EnableDiscoveryClient/@EnableEurekaClient功能类似，区别在于@EnableDiscoveryClient适用于包含eureka在内的多个注册中心，但是@EnableEurekaClient只适用于eureka。
+
+#### 客户端发起注册与服务获取
 
 @EnableDiscoveryClient主要用来开启DiscoveryClient实例，通过梳理，可以得到如下所示的依赖关系图：
 
@@ -342,6 +344,8 @@ refreshRegistry方法内部会做一个判断，以决定是否全量拉取服�
     }
 ```
  
+ #### 服务端接收注册
+ 
  上面讲的都是服务如何向eureka发起注册，那么**eureka是如何处理这些注册请求的**呢？下面我们具体看一下：
  
  
@@ -524,6 +528,169 @@ handleRegistration的源码如下：
 private final ConcurrentHashMap<String, Map<String, Lease<InstanceInfo>>> registry = new ConcurrentHashMap();
 ```
 这也印证了之前说的，eureka使用了双层Map的结构来存储注册在其上面的服务实例信息。
+
+#### 多个eureka server信息同步
+
+- https://cloud.tencent.com/developer/article/1083131
+
+eureka server的信息同步大致分为两部分，一部分是线程池周期性的定时同步eureka server节点间的相互发现，一部分是eureka server上注册信息发生变化触发的同步。
+
+- 定时器同步peers信息
+
+`DefaultEurekaServerContext`中有一个`initialize`方法，源码如下：
+
+```java
+    @PostConstruct
+    @Override
+    public void initialize() {
+        logger.info("Initializing ...");
+        peerEurekaNodes.start();
+        try {
+            registry.init(peerEurekaNodes);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        logger.info("Initialized");
+    }
+```
+重点关注其中的`peerEurekaNodes.start();`语句：
+```java
+    public void start() {
+        taskExecutor = Executors.newSingleThreadScheduledExecutor(
+                new ThreadFactory() {
+                    @Override
+                    public Thread newThread(Runnable r) {
+                        Thread thread = new Thread(r, "Eureka-PeerNodesUpdater");
+                        thread.setDaemon(true);
+                        return thread;
+                    }
+                }
+        );
+        try {
+        // 默认直接触发一次peer是相互发现，后期依靠线程池定时执行实现peers信息更新
+            updatePeerEurekaNodes(resolvePeerUrls());
+            Runnable peersUpdateTask = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        updatePeerEurekaNodes(resolvePeerUrls());
+                    } catch (Throwable e) {
+                        logger.error("Cannot update the replica Nodes", e);
+                    }
+
+                }
+            };
+            taskExecutor.scheduleWithFixedDelay(
+                    peersUpdateTask,
+                    serverConfig.getPeerEurekaNodesUpdateIntervalMs(),
+                    serverConfig.getPeerEurekaNodesUpdateIntervalMs(),
+                    TimeUnit.MILLISECONDS
+            );
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        for (PeerEurekaNode node : peerEurekaNodes) {
+            logger.info("Replica node URL:  {}", node.getServiceUrl());
+        }
+    }
+```
+
+在`start`方法内部，定义了一个单线程的线程池`taskExecutor`，然后定义了一个`Runnable`类型的对象`peersUpdateTask`对象，从其名字可以看出其就是更新peers节点信息的task，然后这个task以定期延时任务的形式提交到线程池中，默认的初始延时10min，定期执行时间间隔10min。重点看下`updatePeerEurekaNodes`方法：
+```java
+    /**
+     * Given new set of replica URLs, destroy {@link PeerEurekaNode}s no longer available, and
+     * create new ones.
+     *
+     * @param newPeerUrls peer node URLs; this collection should have local node's URL filtered out
+     */
+    protected void updatePeerEurekaNodes(List<String> newPeerUrls) {
+        if (newPeerUrls.isEmpty()) {
+            logger.warn("The replica size seems to be empty. Check the route 53 DNS Registry");
+            return;
+        }
+
+        Set<String> toShutdown = new HashSet<>(peerEurekaNodeUrls);
+        toShutdown.removeAll(newPeerUrls);
+        Set<String> toAdd = new HashSet<>(newPeerUrls);
+        toAdd.removeAll(peerEurekaNodeUrls);
+
+        if (toShutdown.isEmpty() && toAdd.isEmpty()) { // No change
+            return;
+        }
+
+        // Remove peers no long available
+        List<PeerEurekaNode> newNodeList = new ArrayList<>(peerEurekaNodes);
+
+        if (!toShutdown.isEmpty()) {
+            logger.info("Removing no longer available peer nodes {}", toShutdown);
+            int i = 0;
+            while (i < newNodeList.size()) {
+                PeerEurekaNode eurekaNode = newNodeList.get(i);
+                if (toShutdown.contains(eurekaNode.getServiceUrl())) {
+                    newNodeList.remove(i);
+                    eurekaNode.shutDown();
+                } else {
+                    i++;
+                }
+            }
+        }
+
+        // Add new peers  添加新的节点
+        if (!toAdd.isEmpty()) {
+            logger.info("Adding new peer nodes {}", toAdd);
+            for (String peerUrl : toAdd) {
+                newNodeList.add(createPeerEurekaNode(peerUrl));
+            }
+        }
+
+        this.peerEurekaNodes = newNodeList;
+        this.peerEurekaNodeUrls = new HashSet<>(newPeerUrls);
+    }
+```
+
+代码已经展示的很直白了，就是剔除一些不可用的peers，添加新的peers节点。
+
+- 注册信息的相互同步
+
+在`PeerAwareInstanceRegistryImpl`类中，有一个`replicateToPeers`方法，源码如下：
+```java
+    /**
+     * Replicates all eureka actions to peer eureka nodes except for replication
+     * traffic to this node.
+     *
+     */
+    private void replicateToPeers(Action action, String appName, String id,
+                                  InstanceInfo info /* optional */,
+                                  InstanceStatus newStatus /* optional */, boolean isReplication) {
+        Stopwatch tracer = action.getTimer().start();
+        try {
+            if (isReplication) {
+                numberOfReplicationsLastMin.increment();
+            }
+            // If it is a replication already, do not replicate again as this will create a poison replication
+            if (peerEurekaNodes == Collections.EMPTY_LIST || isReplication) {
+                return;
+            }
+
+            for (final PeerEurekaNode node : peerEurekaNodes.getPeerEurekaNodes()) {
+                // If the url represents this host, do not replicate to yourself.
+                if (peerEurekaNodes.isThisMyUrl(node.getServiceUrl())) {
+                    continue;
+                }
+                replicateInstanceActionsToPeers(action, appName, id, info, newStatus, node);
+            }
+        } finally {
+            tracer.stop();
+        }
+    }
+```
+源码相对也比较简单，就是首先会做对从其他peer是同步来的instance信息进行计数，然后会判断是否有peers节点存在，且当前instance的信息不是从其他peer同步来的（因为从其他peer同步的信息，你在给别人同步回去，容易形成死循环）。换言之，eureka server只会将原生注册在自己之上的instance信息同步到其他peer。然后会调用`replicateInstanceActionsToPeers`方法进行真正的instance信息同步。
+
+
+
+
+
+
 
 
 ## Ribbon源码分析
