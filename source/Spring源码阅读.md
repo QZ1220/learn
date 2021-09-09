@@ -275,6 +275,58 @@ public class DiscoveryClient implements EurekaClient {
                     registryFetchIntervalSeconds, TimeUnit.SECONDS);
         }
 ```
+查看`TimedSupervisorTask`类的`run`方法可以知道，它内部会去定时发起请求，源码如下：
+```java
+    @Override
+    public void run() {
+        Future<?> future = null;
+        try {
+        // 将任务提交到线程池
+            future = executor.submit(task);
+            threadPoolLevelGauge.set((long) executor.getActiveCount());
+            // 阻塞获取执行结果，直至超时
+            future.get(timeoutMillis, TimeUnit.MILLISECONDS);  // block until done or timeout
+            delay.set(timeoutMillis);
+            threadPoolLevelGauge.set((long) executor.getActiveCount());
+            successCounter.increment();
+        } catch (TimeoutException e) {
+            logger.warn("task supervisor timed out", e);
+            timeoutCounter.increment();
+
+            long currentDelay = delay.get();
+            // 如果访问超时，那么下次executor的执行时间间隔就翻倍
+            long newDelay = Math.min(maxDelay, currentDelay * 2);
+            delay.compareAndSet(currentDelay, newDelay);
+
+        } catch (RejectedExecutionException e) {
+            if (executor.isShutdown() || scheduler.isShutdown()) {
+                logger.warn("task supervisor shutting down, reject the task", e);
+            } else {
+                logger.warn("task supervisor rejected the task", e);
+            }
+
+            rejectedCounter.increment();
+        } catch (Throwable e) {
+            if (executor.isShutdown() || scheduler.isShutdown()) {
+                logger.warn("task supervisor shutting down, can't accept the task");
+            } else {
+                logger.warn("task supervisor threw an exception", e);
+            }
+
+            throwableCounter.increment();
+        } finally {
+            if (future != null) {
+                future.cancel(true);
+            }
+
+            if (!scheduler.isShutdown()) {
+            // 设置下一次调度的执行信息
+                scheduler.schedule(this, delay.get(), TimeUnit.MILLISECONDS);
+            }
+        }
+    }
+```
+从上面的代码来看，可以回答一个很经典的问题，eureka注册中心挂了，服务之间还可以相互调用吗？源码告诉我们，可以的！！！
  
  通过CacheRefreshThread类的run方法可以知道他其实内部又调用了refreshRegistry方法：
 ```java
