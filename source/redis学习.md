@@ -51,6 +51,10 @@
          * [宕机恢复](#宕机恢复)
          * [使用](#使用)
    * [redis线程模型](#redis线程模型)
+      * [单线程模型](#单线程模型)
+      * [多线程模型](#多线程模型)
+         * [为什么需要多线程](#为什么需要多线程)
+      * [性能对比](#性能对比)
 
 
 ## redis数据结构
@@ -1752,6 +1756,52 @@ return nil;
 - https://segmentfault.com/a/1190000037434936
 - https://www.cnblogs.com/volare/p/12283355.html
 - https://www.cnblogs.com/javastack/p/12848446.html
+
+### 单线程模型
+
+先来一张图直观的感受下单线程模型的请求处理过程:
+
+![redis_single_thread](./image/redis/redis_single_thread.png)
+
+各个关键步骤如下所示：
+
+1. 客户端socket01请求redis的server scoket建立连接，此时server socket生成`AE_READABLE`事件，IO多路复用程序监听到server socket产生的事件，并将该事件压入队列。
+文件事件分派器从队列中拉取事件交给连接应答处理器，处理器同时生成一个与客户端通信的socket01,并将该scoket01的AE_READABLE事件与命令请求处理器关联
+
+2. 此时客户端scoket01发送一个set key value的请求，redis的scoket01接收到`AE_READABLE`事件，IO多路复用程序监听到事件，将事件压入队列，文件分派器取到事件，由于scoket01已经和命令请求处理器关联，所以命令请求处理器开始set key value,完毕后会将redis的scoket01的`AE_WAITABLE`事件关联到命令回复处理器
+
+3. 如果此时客户端准备好接收返回结果了，向redis中的socket01发起询问请求，那么 redis 中的 socket01 会产生一个 `AE_WRITABLE` 事件，同样压入队列中，事件分派器找到相关联的命令回复处理器，由命令回复处理器对 socket01 输入本次操作的一个结果，比如 ok，之后解除 socket01 的 AE_WRITABLE 事件与命令回复处理器的关联。
+
+如此便完成了redis的一次通信。
+
+这里需要注意下：
+
+一般所说的redis单线程仅限于6.0版本以前的redis，并且这里单线程只是在接收、处理IO请求的时候是单线程，如图中所示。但是，redis后台其实还有其他的线程，比如进行持久化的，以及数据清理的线程等。
+
+由于redis采用了多路复用机制，借助操作系统底层的指令（epoll等）就可以实现，一个线程监听多个连接的情况。
+
+### 多线程模型
+
+- https://www.alibabacloud.com/blog/improving-redis-performance-through-multi-thread-processing_594150
+
+
+![redis_multi_thread](./image/redis/redis_multi_thread.jpeg)
+
+同样的，通过一张图来直观的感受下，6.0版本以后新增加的多线程处理IO请求的情况，可以看到单线程时只有一个线程监听IO请求，现在变成了N个线程监听IO请求。图中省略了redis server实际处理请求的过程，但是这部分和单线程的一模一样，没有变化。
+
+#### 为什么需要多线程
+
+一般而言，redis的性能瓶颈不在于CPU，而在于内存和网络。内存方面可以通过升级频率更改的内存或者加大内存来进行性能提升，但是网络IO读写在redis命令的整个执行周期内占用了大部分的CPU时间，如果我们可以使用多线程来处理网络IO请求，那么势必会加快redis的处理速度，因此在6.0版本以后引入了多线程了处理网络IO。
+
+### 性能对比
+
+![redis_performance](./image/redis/redis_performance.jpeg)
+
+从图中可以看出，多线程情况下，读取性能大约提升了2.5倍，写入性能大约提升了2倍。
+
+
+
+
 
 
 
