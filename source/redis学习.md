@@ -55,6 +55,9 @@
       * [多线程模型](#多线程模型)
          * [为什么需要多线程](#为什么需要多线程)
       * [性能对比](#性能对比)
+   * [redis的ASK和MOVED](#redis的ASK和MOVED)
+      * [ASK](#ASK)
+      * [MOVED](#MOVED)
 
 
 ## redis数据结构
@@ -1791,13 +1794,31 @@ return nil;
 
 #### 为什么需要多线程
 
-一般而言，redis的性能瓶颈不在于CPU，而在于内存和网络。内存方面可以通过升级频率更改的内存或者加大内存来进行性能提升，但是网络IO读写在redis命令的整个执行周期内占用了大部分的CPU时间，如果我们可以使用多线程来处理网络IO请求，那么势必会加快redis的处理速度，因此在6.0版本以后引入了多线程了处理网络IO。
+一般而言，redis的性能瓶颈不在于CPU，而在于内存和网络。内存方面可以通过升级频率更改的内存或者加大内存来进行性能提升，但是网络IO读写在redis命令的整个执行周期内占用了大部分的CPU时间，如果我们可以使用多线程来处理网络IO请求，那么势必会加快redis的处理速度，因此在6.0版本以后引入了多线程来处理网络IO。
 
 ### 性能对比
 
 ![redis_performance](./image/redis/redis_performance.jpeg)
 
 从图中可以看出，多线程情况下，读取性能大约提升了2.5倍，写入性能大约提升了2倍。
+
+## redis的ASK和MOVED
+
+https://redis.io/topics/cluster-spec
+
+其实，这两个的区别很清晰。
+
+### ASK
+
+如果在redis server扩缩容的过程中，你也在操作redis的数据，那么有可能你将redis命令发过去的A节点没有存储相应的数据（可能扩缩容导致数据迁移了），此时redis会返回ASK重定向以及数据真实的B节点信息。redis客户端此时就可以使用这个新的B节点位置进行数据操作。但是后续的操作还是会发往之前A节点，如此。
+
+简单来说，redis client对于ASK这种返回结果，不会更新本地记录的key hash slot路由信息。
+
+### MOVED
+
+如果客户端请求redis server，server返回了MOVED以及新的B节点位置给客户端，那么客户端以后对于这类slot的请求会发往新的B节点。
+
+简单来说，redis client对于MOVED这种返回结果，会更新本地记录的key hash slot路由信息。
 
 
 
