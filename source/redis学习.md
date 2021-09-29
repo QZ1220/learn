@@ -60,6 +60,8 @@
       * [MOVED](#MOVED)
 
 
+redis学习的[参考文档](https://redisbook.readthedocs.io/en/latest/index.html)，这是我目前看到的最完备，图文并茂的文档，值得学习。
+
 ## redis数据结构
 
 ### 参考链接
