@@ -247,11 +247,12 @@ public User registerWithUtils(String name, String phone, String address) {
 ```
 但这几个传统的方法同样有问题，
 
-BeanValidation：
+**BeanValidation：**
 
 - 通常只能解决简单的校验逻辑，复杂的校验逻辑一样要写代码实现定制校验器
 - 在添加了新校验逻辑时，同样会出现在某些地方忘记添加一个注解的情况，DRY原则还是会被违背
-ValidationUtils类：
+
+**ValidationUtils类：**
 
 - 当大量的校验逻辑集中在一个类里之后，违背了Single Responsibility单一性原则，导致代码混乱和不可维护
 - 业务异常和校验异常还是会混杂
@@ -326,7 +327,7 @@ SalesRep rep = salesRepRepo.findRep(areaCode);
 
 Make Implicit Concepts Explicit
 
-在这里，我们可以看到，原来电话号仅仅是用户的一个参数，属于隐形概念，但实际上电话号的区号才是真正的业务逻辑，而我们需要将电话号的概念显性化，通过写一个Value Object：
+在这里，我们可以看到，原来电话号仅仅是用户的一个参数，属于隐性概念，但实际上电话号的区号才是真正的业务逻辑，而我们需要将电话号的概念显性化，通过写一个Value Object：
 ```java
 public class PhoneNumber {
   
@@ -479,7 +480,7 @@ public void pay(BigDecimal money, Long recipientId) {
 ```
 如果这个是境内转账，并且境内的货币永远不变，该方法貌似没啥问题，但如果有一天货币变更了（比如欧元区曾经出现的问题），或者我们需要做跨境转账，该方法是明显的 bug ，因为 money 对应的货币不一定是 CNY 。
 
-在这个 case 里，当我们说“支付 x 元”时，除了 x 本身的数字之外，实际上是有一个隐含的概念那就是货币“元”。但是在原始的入参里，之所以只用了 BigDecimal 的原因是我们认为 CNY 货币是默认的，是一个隐含的条件，但是在我们写代码时，需要把所有隐性的条件显性化，而这些条件整体组成当前的上下文。所以 DP 的第二个原则是：
+在这个 case 里，当我们说“支付 x 元”时，除了 x 本身的数字之外，实际上是有一个隐含的概念那就是货币「人民币-元」。但是在原始的入参里，之所以只用了 BigDecimal 的原因是我们认为 CNY 货币是默认的，是一个隐含的条件，但是在我们写代码时，需要把所有隐性的条件显性化，而这些条件整体组成当前的上下文。所以 DP 的第二个原则是：
 
 ##### 将隐性的上下文显性化
 
@@ -570,6 +571,7 @@ public void pay(Money money, Currency targetCurrency, Long recipientId) {
 - DP是一个完整的概念整体，拥有精准定义
 - DP使用业务域中的原生语言
 - DP可以是业务域的最小组成部分、也可以构建复杂组合
+
 注：Domain Primitive的概念和命名来自于Dan Bergh Johnsson & Daniel Deogun的书 Secure by Design。
 
 #### 使用 Domain Primitive 的三原则
@@ -601,7 +603,7 @@ Domain Primitive 是 Value Object 的进阶版，在原始 VO 的基础上要求
 - 有限制的Integer：比如OrderId（>0），Percentage（0-100%），Quantity（>=0）等
 - 可枚举的 int ：比如 Status（一般不用Enum因为反序列化问题）
 - Double 或 BigDecimal：一般用到的 Double 或 BigDecimal 都是有业务含义的，比如 Temperature、Money、Amount、ExchangeRate、Rating 等
-- 复杂的数据结构：比如 Map> 等，尽量能把 Map 的所有操作包装掉，仅暴露必要行为
+- 复杂的数据结构：比如 Map 等，尽量把 Map 的所有操作包装掉，仅暴露必要行为
 
 ### 实战 - 老应用重构的流程
 
@@ -1592,7 +1594,7 @@ public class OrderRepositoryImpl implements OrderRepository {
 
 举一个常见的例子，在主子订单的场景下，一个主订单Order会包含多个子订单LineItem，假设有个改某个子订单价格的操作，会同时改变主订单价格，但是对其他子订单无影响：
 
-![repo7](./image/ddd/repo7.jpg)
+![repo7](./image/ddd/repo7.awebp)
 
 如果用一个非常naive的实现来完成，会导致多出来两个无用的更新操作，如下：
 ```java
@@ -3075,7 +3077,7 @@ public class CombatService {
         // ...
         monster.takeDamage(damage);
         if (!monster.isAlive()) {
-            player.receiveExp(10); // 收到经验
+            player.receiveExp(100); // 收到经验
             if (player.canLevelUp()) {
                 player.levelUp(); // 升级
             }
