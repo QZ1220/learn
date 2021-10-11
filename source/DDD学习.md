@@ -101,11 +101,13 @@
          * [目前领域事件的缺陷和展望](#目前领域事件的缺陷和展望)
       * [总结](#总结-1)
 
+以下内容大多来自参考文档，部分融合了一些个人的理解在其中。
+
 ## Domain Primitive
 
 - https://developer.aliyun.com/article/716908
 
-以下内容大多来自[参考文档](https://developer.aliyun.com/article/716908)，融合了一些个人的理解在其中。
+
 
 在 DDD 里，Domain Primitive（后续简称DP）  可以说是一切模型、方法、架构的基础，就像其他变成语言中的 Integer、String 一样无处不在。我们通过一个案例来讲解DP的一些特性。
 
