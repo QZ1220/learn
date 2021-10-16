@@ -708,7 +708,9 @@ service.register(new Name("殷浩"), new PhoneNumber("0571-12345678"), new Addre
 
 拿到这个需求之后，一个开发可能会经历一些技术选型，最终可能拆解需求如下：
 
-1、从MySql数据库中找到转出和转入的账户，选择用 MyBatis 的 mapper 实现 DAO；2、从 Yahoo（或其他渠道）提供的汇率服务获取转账的汇率信息（底层是 http 开放接口）；
+1、从MySql数据库中找到转出和转入的账户，选择用 MyBatis 的 mapper 实现 DAO；
+
+2、从 Yahoo（或其他渠道）提供的汇率服务获取转账的汇率信息（底层是 http 开放接口）；
 
 3、计算需要转出的金额，确保账户有足够余额，并且没超出每日转账上限；
 
@@ -918,7 +920,7 @@ public class AccountRepositoryImpl implements AccountRepository {
 ```
 Account实体类和AccountDO数据类的对比如下：
 
-- Data Object数据类：AccountDO是单纯的和数据库表的映射关系，每个字段对应数据库表的一个column，这种对象叫Data Object。DO只有数据，没有行为。AccountDO的作用是对数据库做快速映射，避免直接在代码里写SQL。无论你用的是MyBatis还是Hibernate这种ORM，从数据库来的都应该先直接映射到DO上，但是代码里应该完全避免直接操作 DO。
+- Data Object数据类：AccountDO是单纯的和数据库表的映射关系，每个字段对应数据库表的一个column，这种对象叫Data Object。DO只有数据，没有行为。AccountDO的作用是对数据库做快速映射，避免直接在代码里写SQL。无论你用的是MyBatis还是Hibernate这种ORM，从数据库来的都应该先直接映射到DO上，但是代码（个人理解，这里的「代码」应该是说上层业务代码）里应该完全避免直接操作 DO。
 - Entity实体类：Account 是基于领域逻辑的实体类，它的字段和数据库储存不需要有必然的联系。Entity包含数据，同时也应该包含行为。在 Account 里，字段也不仅仅是String等基础类型，而应该尽可能用上一讲的 Domain Primitive 代替，可以避免大量的校验代码。
 
 DAO 和 Repository 类的对比如下：
@@ -933,6 +935,8 @@ DAO 和 Repository 类的对比如下：
 - Account属于一个完整的内存中对象，可以比较容易的做完整的测试覆盖，包含其行为。
 - Repository作为一个接口类，可以比较容易的实现Mock或Stub，可以很容易测试。
 - AccountRepositoryImpl实现类，由于其职责被单一出来，只需要关注Account到AccountDO的映射关系和Repository方法到DAO方法之间的映射关系，相对于来说更容易测试。
+
+按照上面的思路优化后的流程图如下：
 
 ![arch2](./image/ddd/arch2.jpg)
 
@@ -971,6 +975,8 @@ ACL 不仅仅只是多了一层调用，在实际开发中ACL能够提供更多�
 - 兜底：如果外部依赖的稳定性较差，一个能够有效提升我们系统稳定性的策略是通过ACL起到兜底的作用，比如当外部依赖出问题后，返回最近一次成功的缓存或业务兜底数据。这种兜底逻辑一般都比较复杂，如果散落在核心业务代码中会很难维护，通过集中在ACL中，更加容易被测试和修改。
 - 易于测试：类似于之前的Repository，ACL的接口类能够很容易的实现Mock或Stub，以便于单元测试。
 - 功能开关：有些时候我们希望能在某些场景下开放或关闭某个接口的功能，或者让某个接口返回一个特定的值，我们可以在ACL配置功能开关来实现，而不会对真实业务代码造成影响。同时，使用功能开关也能让我们容易的实现Monkey测试，而不需要真正物理性的关闭外部依赖。
+
+假如防腐层，隔离第三方强依赖服务以后，流程图如下所示：
 
 ![arch3](./image/ddd/arch3.jpg)
 
@@ -1191,6 +1197,8 @@ public class TransferServiceImplNew implements TransferService {
 为了有效的组织代码结构，避免下层代码依赖到上层实现的情况，在Java中我们可以通过POM Module和POM依赖来处理相互的关系。通过Spring/SpringBoot的容器来解决运行时动态注入具体实现的依赖的问题。一个简单的依赖关系图如下：
 
 ![arch9](./image/ddd/arch9.jpg)
+
+demo示例代码，在[这里](https://github.com/AudiVehicle/dddbook)
 
 ![arch10](./image/ddd/arch10.jpg)
 
