@@ -14,6 +14,9 @@
       * [set](#set)
       * [zset](#zset)
          * [zset对于重复数据的处理](#zset对于重复数据的处理)
+   * [HyperLogLog](#hyperloglog)
+      * [简介](#简介)
+      * [原理](#原理)
    * [redis为何快](#redis为何快)
       * [多路IO复用模型](#多路io复用模型)
    * [使用shell和pipline构造海量redis数据](#使用shell和pipline构造海量redis数据)
@@ -55,9 +58,9 @@
       * [多线程模型](#多线程模型)
          * [为什么需要多线程](#为什么需要多线程)
       * [性能对比](#性能对比)
-   * [redis的ASK和MOVED](#redis的ASK和MOVED)
-      * [ASK](#ASK)
-      * [MOVED](#MOVED)
+   * [redis的ASK和MOVED](#redis的ask和moved)
+      * [ASK](#ask)
+      * [MOVED](#moved)
 
 
 redis学习的[参考文档](https://redisbook.readthedocs.io/en/latest/index.html)，这是我目前看到的最完备，图文并茂的文档，值得学习。
@@ -274,7 +277,73 @@ zset是可排序的set。实现方式有ziplist或skiplist。在同时满足以�
 5) "testValue100"
 6) "1001"
 ```
+## HyperLogLog
 
+### 简介
+- https://www.jianshu.com/p/096b25cbc39c
+- https://www.jianshu.com/p/43f3315b33b7
+
+HyperLogLog 是一种概率数据结构，它使用固定大小的内存空间占用来实现海量数据的计数统计功能。redis提供了三个指令来供用户操作HyperLogLog类型的数据：
+
+- PFADD：添加数据，存在时不做任何操作，不存在计数为1
+- PFCOUNT：获取指定key的计数
+- PFMERGE：可以将多个计数key合并为一个计数key，计数值累加
+
+```linux
+172.20.90.123:6379> pfadd userCount id1
+(integer) 1
+172.20.90.123:6379> pfadd userCount2 id2
+(integer) 1
+172.20.90.123:6379> pfcount userCount
+(integer) 1
+172.20.90.123:6379> pfcount userCount2
+(integer) 1
+
+172.20.90.123:6379> pfmerge newUserCount userCount userCount2
+OK
+
+-- 执行了pfmerge命令以后，原来的key还是存在的
+172.20.90.123:6379> pfcount userCount
+(integer) 1
+172.20.90.123:6379> pfcount newUserCount
+(integer) 2
+```
+
+### 原理
+
+下面的内容大部分来自于[这里](https://www.jianshu.com/p/096b25cbc39c)
+
+它使用概率算法来统计集合的近似基数。而它算法的最本源则是伯努利过程。伯努利过程就是一个抛硬币实验的过程。抛一枚正常硬币，落地可能是正面，也可能是反面，二者的概率都是 1/2 。伯努利过程就是一直抛硬币，直到落地时出现正面位置，并记录下抛掷次数k。比如说，抛一次硬币就出现正面了，此时 k 为 1; 第一次抛硬币是反面，则继续抛，直到第三次才出现正面，此时 k 为 3。
+
+对于 n 次伯努利过程，我们会得到 n 个出现正面的投掷次数值 , 其中这里的最大值是k_max。
+
+根据一顿数学推导，我们可以得出一个结论：  `2^k_max`来作为n的估计值。也就是说你可以根据最大投掷次数近似的推算出进行了几次伯努利过程。
+
+如下图所示：
+
+![hyperlog_1](./image/redis/hyperlog_1.webp)
+
+下面，我们就来讲解一下 HyperLogLog 是如何模拟伯努利过程，并最终统计集合基数的。
+
+HyperLogLog 在添加元素时，会通过Hash函数，将元素转为64位比特串，例如输入5，便转为101(省略前面的0，下同)。这些比特串就类似于一次抛硬币的伯努利过程。比特串中，0 代表了抛硬币落地是反面，1 代表抛硬币落地是正面，如果一个数据最终被转化了 10010000，那么从低位往高位看，我们可以认为，这串比特串可以代表一次伯努利过程，首次出现 1 的位数为5，就是抛了5次才出现正面。
+
+所以 HyperLogLog 的基本思想是利用集合中数字的比特串第一个 1 出现位置的最大值来预估整体基数，但是这种预估方法存在较大误差，为了改善误差情况，HyperLogLog中引入分桶平均的概念，计算 m 个桶的调和平均值。
+
+![hyperlog_2](./image/redis/hyperlog_2.webp)
+
+Redis 中 HyperLogLog 一共分了 2^14 个桶，也就是 16384 个桶。每个桶中是一个 6 bit 的数组，如下图所示。
+
+![hyperlog_3](./image/redis/hyperlog_3.webp)
+
+HyperLogLog 将上文所说的 64 位比特串的低 14 位单独拿出，它的值就对应桶的序号，然后将剩下 50 位中第一次出现 1 的位置值设置到桶中。50位中出现1的位置值最大为50，所以每个桶中的 6 位数组正好可以表示该值。
+
+在设置前，要设置进桶的值是否大于桶中的旧值，如果大于才进行设置，否则不进行设置。示例如下图所示。
+
+![hyperlog_4](./image/redis/hyperlog_4.webp)
+
+此时为了性能考虑，是不会去统计当前的基数的，而是将 HyperLogLog 头的 card 属性中的标志位置为 1，表示下次进行 pfcount 操作的时候，当前的缓存值已经失效了，需要重新统计缓存值。在后面 pfcount 流程的时候，发现这个标记为失效，就会去重新统计新的基数，放入基数缓存。
+
+在计算近似基数时，就分别计算每个桶中的值，带入到上文将的 DV 公式中，进行调和平均和结果修正，就能得到估算的基数值。
 
 ## redis为何快
 
@@ -285,7 +354,7 @@ zset是可排序的set。实现方式有ziplist或skiplist。在同时满足以�
  3. 采用多路IO复用模型，提高查询响应速度
 
 ### 多路IO复用模型
-![此处输入图片的描述][9]
+![此处输入图片的描述][10]
 
 ## 使用shell和pipline构造海量redis数据
 批量生成redis测试数据
@@ -370,7 +439,7 @@ apt-get install -y vim
 	}
 ```
 测试结果如下：
-![此处输入图片的描述][10]
+![此处输入图片的描述][11]
 可以看出，再批量处理10K个命令的情况下，使用pipeline的性能是不使用情况的30倍。甚至，使用pipe的性能和本机内存操作的性能匹敌。
 
 ## 海量key的查询
@@ -485,7 +554,7 @@ Reading messages... (press Ctrl-C to quit)
 
 2表示有两个监听端，此时在消息的监听端应该可以收到消息test。
 
-这种方式任然无法进行消息的持久化，如果需要持久化需要专业的消息队列，如[rabbitmq][11]。 
+这种方式任然无法进行消息的持久化，如果需要持久化需要专业的消息队列，如[rabbitmq][12]。 
 
 ## redis的持久化以及实战
 
@@ -498,7 +567,7 @@ redis的save bgsave指令
  - https://zhuanlan.zhihu.com/p/41228196
  - https://cristian.regolo.cc/2015/09/05/life-in-a-redis-cluster.html
 
-![此处输入图片的描述][12]
+![此处输入图片的描述][13]
 
 gossip协议按个人理解，其目的是为了在某个特定的集群类传播某个消息，最终使集群都获得该消息，达成最终一致性。在一些区块链项目中也有用到该协议。
 
@@ -1431,7 +1500,7 @@ return redis.call('pttl', KEYS[1]);
         Thread.sleep(40 * 1000);
         log.info("休眠结束");
 ```
-在加锁成功的日志输出后，我们可以尝试不断刷新redis，查看锁的ttl，可以发现它确实的没有续期的（直接将超时时间重置为30秒）。
+在加锁成功的日志输出后，我们可以尝试不断刷新redis，查看锁的ttl，可以发现它确实的没有续期的（没有将超时时间重置为30秒）。
 
 我们可以将上面的第二行代码修改成如下：
 ```java
@@ -1822,11 +1891,7 @@ https://redis.io/topics/cluster-spec
 
 简单来说，redis client对于MOVED这种返回结果，会更新本地记录的key hash slot路由信息。
 
-
-
-
-
-
+https://www.jianshu.com/p/096b25cbc39c
 
 
   [1]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/redis_object.jpeg?raw=true
@@ -1837,7 +1902,8 @@ https://redis.io/topics/cluster-spec
   [6]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/jump_table.png?raw=true
   [7]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/redis_jump_table.png?raw=true
   [8]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/zskiplistNode.png?raw=true
-  [9]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
-  [10]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
-  [11]: https://github.com/Audi-A7/learn/blob/master/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md
-  [12]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/gossip.jpg?raw=true
+  [9]: ds
+  [10]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20191230201452.png?raw=true
+  [11]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/aHR0cDovL2ltZy5ibG9nLmNzZG4ubmV0LzIwMTcxMjExMDkxMzU4OTkx.jpg?raw=true
+  [12]: https://github.com/Audi-A7/learn/blob/master/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%AD%A6%E4%B9%A0.md
+  [13]: https://github.com/Audi-A7/learn/blob/master/source/image/redis/gossip.jpg?raw=true
