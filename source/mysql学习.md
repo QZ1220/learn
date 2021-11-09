@@ -42,6 +42,7 @@
          * [页合并](#页合并)
          * [页分裂](#页分裂)
          * [页的合并分裂对性能的影响](#页的合并分裂对性能的影响)
+   * [mysql的mvcc实现原理](#mysql的mvcc实现原理)
 
 
 
@@ -289,9 +290,9 @@ Master_SSL_Verify_Server_Cert: No
 ![此处输入图片的描述][3]
 
 ## 半同步复制
-mysql的半同步复制，主要是为了解决主从复制延时比较高的问题（除开网络原因，一般大事务也可能造成主从复制延长较大）。
+mysql的半同步复制，主要是为了解决异步复制时数据一致性问题以及同步复制时性能问题。
 
-mysql5.7以后引入了半同步复制的技术，可以有效减少主从复制的延迟。
+所谓半同步复制，就是指在master执行事务，未commit前（在commit前还是后可以进行配置），需要等待至少一个slave同步当前数据成功，或者超时以后使用异步复制模式。
 
 下面我们演示一下配置半同步复制的过程。我们基于上面gtid复制的集群机器做演示。
 
@@ -1330,7 +1331,7 @@ redolog的主要作用是当mysql服务器宕机，重启时，mysql可以完成
 
 默认情况下，redolog在磁盘上的文件名为ib_logfile0 and ib_logfile1。
 
-和binlog一样，redolog也是在事务commit之前生成，多个事务产生的redolog可以一起提交。但是这里有一点需要注意，redolog和commit根据官方文档，没看到有说使用二阶段事务来保证二者的原子性。
+和binlog一样，redolog也是在事务commit之前生成，多个事务产生的redolog可以一起提交。但是这里有一点需要注意，redolog和commit根据官方文档，没看到有说使用二阶段事务来保证二者的原子性。但是理论上也是要使用2PC来保证数据一致性的。
 
 ### undolog
 
@@ -1341,6 +1342,7 @@ undolog的作用是，如果mysql服务器最近的事务回滚了，那么数�
 
 - https://www.percona.com/blog/2017/04/10/innodb-page-merging-and-page-splitting/
 - https://zhuanlan.zhihu.com/p/98818611
+- https://zhuanlan.zhihu.com/p/35811482
 
 ### 物理存储
 
@@ -1446,6 +1448,13 @@ InnoDB用INFORMATION_SCHEMA.INNODB_METRICS表来跟踪页的分裂数。可以�
 #### 页的合并分裂对性能的影响
 要记住在合并和分裂的过程，InnoDB会在索引树上加写锁（x-latch）。在操作频繁的系统中这可能会是个隐患。它可能会导致索引的锁争用（index latch contention）。如果表中没有合并和分裂（也就是写操作）的操作，称为“乐观”更新，只需要使用读锁（S）。带有合并也分裂操作则称为“悲观”更新，使用写锁（X）。
 
+## mysql的mvcc实现原理
+
+- https://zhuanlan.zhihu.com/p/40208895
+- http://mysql.taobao.org/monthly/2017/12/01/
+- https://www.cnblogs.com/luoluoshidafu/p/11528784.html
+- https://blog.csdn.net/SnailMann/article/details/94724197
+- https://dev.mysql.com/doc/refman/8.0/en/innodb-multi-versioning.html
 
 
   [1]: https://github.com/WQZ321123/learn/blob/master/source/image/mysql/master-slave.jpg?raw=true

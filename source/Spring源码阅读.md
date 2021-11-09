@@ -2010,7 +2010,7 @@ feign.compression.request.min-request-size=2048
 
 最终，我们采取的方案是加锁+改为Post接口。
 
-这里，再提一句，要挂你重试机制，怎么关闭？
+这里，再提一句，要关掉重试机制，怎么关闭？
 
 ```java
 spring.cloud.loadbalancer.retry.enabled=false

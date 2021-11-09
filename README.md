@@ -14,17 +14,25 @@
 
 [2021学习笔记](https://github.com/AudiVehicle/learn/blob/master/source/2021%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.md)
 
-jvm学习与调优
------
+redis学习
+-------
 
-[jvm学习与调优](https://github.com/AudiVehicle/learn/blob/master/source/jvm%E5%AD%A6%E4%B9%A0%E4%B8%8E%E8%B0%83%E4%BC%98.md)
-
+[redis学习](https://github.com/Audi-A7/learn/blob/master/source/redis%E5%AD%A6%E4%B9%A0.md)
 
 数据库学习
 -----
 
 [mysql相关学习](https://github.com/AudiVehicle/learn/blob/master/source/mysql%E5%AD%A6%E4%B9%A0.md)
 
+jvm学习与调优
+-----
+
+[jvm学习与调优](https://github.com/AudiVehicle/learn/blob/master/source/jvm%E5%AD%A6%E4%B9%A0%E4%B8%8E%E8%B0%83%E4%BC%98.md)
+
+DDD学习
+----
+
+[DDD学习](https://github.com/AudiVehicle/learn/blob/master/source/DDD%E5%AD%A6%E4%B9%A0.md)
 
 算法
 ---
@@ -40,10 +48,7 @@ spring源码阅读
 
 [spring源码阅读](https://github.com/AudiVehicle/learn/blob/master/source/Spring%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB.md)
 
-redis学习
--------
 
-[redis学习](https://github.com/Audi-A7/learn/blob/master/source/redis%E5%AD%A6%E4%B9%A0.md)
 
 netty学习
 -------
