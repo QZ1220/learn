@@ -816,6 +816,9 @@ count时不走主键索引，很好理解，mysql可能会自己进行优化，�
 
 ## mysql read repeatable级别如何防止幻读
 mysql在RR级别下防止幻读，表象上看是使用了快照技术，即读取的不是最新的数据，是快照（缓存）数据。本质原因是，mysql在RR级别下，操作数据的时候在数据上加了netx-key锁，使得当前操作的事务未提交前，不得进行新的操作，从而避免了幻读的出现。
+
+这里需要强调下，mysql如果想要避免出现幻读，是需要显示加间歇锁（如`select * from table for update`）才可以避免幻读的。更多可以参考[这里](https://dev.mysql.com/doc/refman/8.0/en/innodb-next-key-locking.html).
+
 ![此处输入图片的描述][17]
 
 关于间歇锁（需要主键索引、其他索引、不走索引等情况）的知识，可以查看之前的[笔记][18]。
@@ -1335,7 +1338,33 @@ redolog的主要作用是当mysql服务器宕机，重启时，mysql可以完成
 
 ### undolog
 
-undolog的作用是，如果mysql服务器最近的事务回滚了，那么数据要能够回滚到事务执行前的状态。
+[undolog](https://dev.mysql.com/doc/refman/8.0/en/innodb-undo-logs.html)的作用是，如果mysql服务器最近的事务回滚了，那么数据要能够回滚到事务执行前的状态。
+
+undo log存储在undo tablespace中，其物理空间大小依据页大小决定，在8.0.23以前，页大小为16KB时，undo tablespaces为16MB，8.0.23及以后其大小为16KB，并且如果空间不够会扩大一倍，最大256MB。同样缩容的时候也是缩减一半，最低到16MB。
+
+## muti-version
+
+- https://dev.mysql.com/doc/refman/8.0/en/innodb-multi-versioning.html
+
+Internally, InnoDB adds three fields to each row stored in the database:
+
+- A 6-byte DB_TRX_ID field indicates the transaction identifier for the last transaction that inserted or updated the row. Also, a deletion is treated internally as an update where a special bit in the row is set to mark it as deleted.
+
+- A 7-byte DB_ROLL_PTR field called the roll pointer. The roll pointer points to an undo log record written to the rollback segment. If the row was updated, the undo log record contains the information necessary to rebuild the content of the row before it was updated.
+
+- A 6-byte DB_ROW_ID field contains a row ID that increases monotonically as new rows are inserted. If InnoDB generates a clustered index automatically, the index contains row ID values. Otherwise, the DB_ROW_ID column does not appear in any index.
+
+## im-memory structure
+
+- https://dev.mysql.com/doc/refman/8.0/en/innodb-buffer-pool.html
+
+mysql的缓存池按照list结构存储，默认5/8给new sublist，3/8给old sublist，缓存池的数据按照LRU（least recently used）算法进行淘汰
+
+![innodb-architecture-8-0](./image/mysql/innodb-architecture-8-0.png)
+
+![innodb-buffer-pool-list](./image/mysql/innodb-buffer-pool-list.png)
+
+
 
 
 ## mysql页合并与分裂
